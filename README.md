@@ -32,3 +32,7 @@ Content is independently written. Further reading is linked on relevant pages:
 - Semrush on-page SEO overview
 
 No affiliation or endorsement is implied. The example report and scenarios are labeled illustrative.
+
+## Header and animated hero
+
+Shared two-level header and service mega menu on all pages. site.js handles Escape/outside click, current page links, and hero controls. CSS 3D dashboard uses transform-based floating panels and animated SVG/chart elements. Motion is illustrative, can be paused, respects prefers-reduced-motion, and pauses when offscreen. Pointer tilt runs only for a fine pointer. No external animation dependencies.
