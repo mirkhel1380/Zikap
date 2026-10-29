@@ -55,3 +55,25 @@ if (scene) {
     new IntersectionObserver(entries => { scene.classList.toggle('is-offscreen', !entries[0].isIntersecting); }, {threshold:0}).observe(scene);
   }
 }
+
+// Service finder: a visitor-controlled guide, not an automated diagnosis.
+const serviceChoices = {
+  technical: {title:'Technical SEO',description:'Review access, indexing signals, and the way your important pages connect. Start by understanding whether technical obstacles need investigation.',output:'Prioritized issue register and action plan',href:'technical-seo.html'},
+  keywords: {title:'Keyword research',description:'Connect your services and audience questions to useful topics. Explore search intent, group related ideas, and identify where each topic belongs.',output:'Topic-to-page map and content roadmap',href:'keyword-research.html'},
+  onpage: {title:'On-page SEO',description:'Review whether existing pages give visitors useful answers and a clear next step. Focus on content, titles, headings, and relevant internal links.',output:'Page recommendations and an edit brief',href:'on-page-seo.html'}
+};
+document.querySelectorAll('[data-service-choice]').forEach(button => {
+  button.addEventListener('click', () => {
+    const choice = serviceChoices[button.dataset.serviceChoice];
+    if (!choice) return;
+    document.querySelectorAll('[data-service-choice]').forEach(other => {
+      const selected = other === button;
+      other.classList.toggle('is-selected',selected);
+      other.setAttribute('aria-pressed',String(selected));
+    });
+    document.getElementById('finder-title').textContent = choice.title;
+    document.getElementById('finder-description').textContent = choice.description;
+    document.getElementById('finder-output').textContent = choice.output;
+    document.getElementById('finder-link').setAttribute('href',choice.href);
+  });
+});
