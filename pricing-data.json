@@ -1,0 +1,74 @@
+{
+  "currency": "USD",
+  "billing": "one-time",
+  "packages": [
+    {
+      "id": "audit",
+      "name": "Technical SEO Starter",
+      "price": 29,
+      "unit": "Up to 5 public pages",
+      "scope": "One website; up to 5 publicly accessible URLs; basic access, metadata, internal-link and indexing-signal review.",
+      "output": "Prioritized findings and an action checklist. Implementation is quoted separately.",
+      "features": [
+        "Up to 5 public page URLs",
+        "Titles, descriptions & heading review",
+        "Internal-link and indexing-signal checks",
+        "Prioritized findings with next steps",
+        "One clarification / revision round"
+      ],
+      "link": "technical-seo.html",
+      "tone": "technical"
+    },
+    {
+      "id": "keywords",
+      "name": "Keyword Research Starter",
+      "price": 19,
+      "unit": "25 curated keyword ideas",
+      "scope": "One topic, one language, one target market; 25 keyword ideas grouped by intent and mapped to up to 5 existing or proposed pages.",
+      "output": "Keyword / topic map with intent notes and page recommendations. Live search-volume and difficulty metrics are not included.",
+      "features": [
+        "25 curated keyword ideas",
+        "One topic, language & target market",
+        "Search-intent and topic grouping",
+        "Map topics to up to 5 pages",
+        "One clarification / revision round"
+      ],
+      "link": "keyword-research.html",
+      "tone": "keywords"
+    },
+    {
+      "id": "onpage",
+      "name": "On-page SEO Starter",
+      "price": 39,
+      "unit": "Up to 3 existing pages",
+      "scope": "One website; edit recommendations for up to 3 existing pages in one language.",
+      "output": "Proposed titles, meta descriptions, heading outlines and internal-link recommendations. Publishing and full article writing are quoted separately.",
+      "features": [
+        "Up to 3 existing pages",
+        "Proposed titles & meta descriptions",
+        "Heading and content-structure edits",
+        "Internal-link recommendations",
+        "One clarification / revision round"
+      ],
+      "link": "on-page-seo.html",
+      "tone": "onpage"
+    },
+    {
+      "id": "bundle",
+      "name": "SEO Starter Bundle",
+      "price": 79,
+      "unit": "All three starter packages",
+      "scope": "The Technical SEO Starter, Keyword Research Starter and On-page SEO Starter scopes for the same website, language and target market.",
+      "output": "5-page audit, 25-keyword map and edit recommendations for 3 pages. The listed starter exclusions still apply.",
+      "features": [
+        "Technical review: up to 5 pages",
+        "Research: 25 keyword ideas",
+        "On-page edit brief: up to 3 pages",
+        "One website, language & target market",
+        "One combined revision round"
+      ],
+      "link": "services.html",
+      "tone": "bundle"
+    }
+  ]
+}
