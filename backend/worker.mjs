@@ -50,10 +50,15 @@ export default {async fetch(req,env){
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
   try{
     const path=new URL(req.url).pathname;
-    if(path==='/health'&&req.method==='GET'){
-      if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)return respond({ready:false},503);
-      await env.DB.prepare('SELECT id FROM orders LIMIT 1').first();
-      return respond({ready:true,orders:true,automaticUrlAudit:false,payments:false});
+    // Both the root and /health identify this script and report setup status without revealing secrets.
+    if((path==='/'||path==='/health')&&req.method==='GET'){
+      const checks={databaseBinding:!!env.DB,adminSecret:typeof env.ADMIN_TOKEN==='string'&&env.ADMIN_TOKEN.length>=32,ordersTable:null,rateLimitsTable:null};
+      if(checks.databaseBinding){
+        try{await env.DB.prepare('SELECT id, token_hash, status, revision_used FROM orders LIMIT 1').first();checks.ordersTable=true;}catch{checks.ordersTable=false;}
+        try{await env.DB.prepare('SELECT key, count, expires FROM rate_limits LIMIT 1').first();checks.rateLimitsTable=true;}catch{checks.rateLimitsTable=false;}
+      }
+      const ready=Object.values(checks).every(value=>value===true);
+      return respond({service:'zikap-orders-api',version:'runtime-checks-1',ready,checks,orders:ready,automaticUrlAudit:false,payments:false},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
     if(path==='/orders'&&req.method==='POST'){
