@@ -46,3 +46,7 @@ reports.html includes three explicitly fictional previews and downloadable plain
 `workspace.html` combines the working free HTML report, specialist-package intake UI, private receipt tracking, and report/revision delivery UI. Package buttons and the main navigation now lead here. `owner.html` is the owner delivery desk; it always requires server-side bearer authentication.
 
 The companion API source, D1 schema and integration tests are in `backend/`. **The API has not been deployed.** `api-config.js` contains an empty public API address, so project submission and tracking are disabled on the live website. Follow `backend/README.md` to connect a Cloudflare account, deploy, and complete the production test. Payments and live URL audits are not implemented; the instant checker uses HTML supplied by the customer.
+
+## Free tools
+
+`tools.html` includes the free HTML checker, live search snippet editor with title/meta tag text export, and a keyword-list cleaner with CSV export. The keyword organizer uses customer input and simple English intent rules only; it does not query a keyword database or generate search-volume/difficulty figures. Specialist-package pricing covers human review and tailored deliverables. The shared header background matches the footer (#e9efdf).
