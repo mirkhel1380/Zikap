@@ -36,10 +36,12 @@ test('owner pagination does not skip orders with identical creation times',async
 });
 test('readiness identifies the running API and reports missing runtime setup without secrets',async()=>{
  const {env,db}=setup();
- const ready=await call(env,'/health');assert.equal(ready.status,200);assert.equal(ready.body.service,'zikap-orders-api');assert.equal(ready.body.version,'runtime-checks-1');assert.deepEqual(ready.body.checks,{databaseBinding:true,adminSecret:true,ordersTable:true,rateLimitsTable:true});assert.equal(JSON.stringify(ready.body).includes(env.ADMIN_TOKEN),false);
+ const ready=await call(env,'/health');assert.equal(ready.status,200);assert.equal(ready.body.service,'zikap-orders-api');assert.equal(ready.body.version,'runtime-checks-2');assert.equal(ready.body.adminSecretStatus,'configured');assert.deepEqual(ready.body.checks,{databaseBinding:true,adminSecret:true,ordersTable:true,rateLimitsTable:true});assert.equal(JSON.stringify(ready.body).includes(env.ADMIN_TOKEN),false);
  const root=await call(env,'/');assert.equal(root.status,200);assert.equal(root.body.ready,true);
- const noKey=await call({...env,ADMIN_TOKEN:''},'/health');assert.equal(noKey.status,503);assert.equal(noKey.body.checks.adminSecret,false);assert.equal(noKey.body.checks.ordersTable,true);
+ const noKey=await call({...env,ADMIN_TOKEN:''},'/health');assert.equal(noKey.status,503);assert.equal(noKey.body.adminSecretStatus,'missing');assert.equal(noKey.body.checks.adminSecret,false);assert.equal(noKey.body.checks.ordersTable,true);
  const noDB=await call({...env,DB:undefined},'/health');assert.equal(noDB.status,503);assert.deepEqual(noDB.body.checks,{databaseBinding:false,adminSecret:true,ordersTable:null,rateLimitsTable:null});
  db.exec('DROP TABLE rate_limits');const missingRate=await call(env,'/health');assert.equal(missingRate.status,503);assert.equal(missingRate.body.checks.rateLimitsTable,false);
  db.exec('DROP TABLE orders');const missingOrders=await call(env,'/health');assert.equal(missingOrders.status,503);assert.equal(missingOrders.body.checks.ordersTable,false);db.close();
 });
+
+test('readiness distinguishes a short secret from a missing secret without exposing it',async()=>{const {env,db}=setup();const secret='short-test-value';const result=await call({...env,ADMIN_TOKEN:secret},'/health');assert.equal(result.status,503);assert.equal(result.body.adminSecretStatus,'too_short');assert.equal(JSON.stringify(result.body).includes(secret),false);db.close();});
