@@ -1,8 +1,6 @@
 'use strict';
 // Shared navigation: native disclosure controls keep keyboard and touch support.
-const serviceMenu = document.querySelector('.service-menu');
-const mobileMenu = document.querySelector('.mobile-menu');
-const disclosures = [serviceMenu, mobileMenu].filter(Boolean);
+const disclosures = Array.from(document.querySelectorAll('.desktop-links > details, .nav-actions > .mobile-menu')); 
 disclosures.forEach(menu => {
   menu.addEventListener('toggle', () => {
     if (menu.open) disclosures.filter(other => other !== menu).forEach(other => { other.open = false; });
