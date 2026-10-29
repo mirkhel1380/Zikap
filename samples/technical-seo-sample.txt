@@ -1,0 +1,35 @@
+Zikap / Sample technical SEO action register
+ILLUSTRATIVE EXAMPLE ONLY. No website was audited. No customer data or measured performance is represented.
+Scenario: a fictional garden shop at https://example.com
+Scope: example structure of three recommendations, not a complete audit.
+
+SUMMARY
+This sample shows how an observation can become an assigned action and a verification step. All findings below are invented for demonstration.
+
+T-01 / INTERNAL DISCOVERY
+Sample page: https://example.com/indoor-herb-kits
+Illustrative observation: no contextual internal link points to this service/category page in the sample scenario.
+Suggested priority: review first if this is an important page; confirm evidence before changing anything.
+Recommendation: add a descriptive link from a relevant existing page when it helps visitors.
+Suggested owner: content editor.
+Verification: confirm the link is present, useful, and resolves directly to the intended destination.
+
+T-02 / REDIRECT PATH
+Sample link: https://example.com/old-kit
+Illustrative observation: an internal link routes through two old URL changes.
+Suggested priority: planned cleanup after reviewing dependencies.
+Recommendation: update the internal link to the intended final URL if it is correct and stable.
+Suggested owner: developer or website administrator.
+Verification: test the revised link and verify that related redirects still serve their intended purpose.
+
+T-03 / PAGE PURPOSE AND CANONICAL REVIEW
+Sample pages: https://example.com/kits and https://example.com/kits?view=all
+Illustrative observation: similar pages have inconsistent canonical references.
+Suggested priority: investigate before editing.
+Recommendation: establish the intended preferred URL and check that page content and indexing instructions support that choice.
+Suggested owner: developer with content owner approval.
+Verification: inspect the rendered canonical and related signals. A canonical is a signal, not a guarantee of indexing.
+
+HANDOFF
+Validate each finding with live evidence. Agree priorities, ownership, scope, and any development separately.
+No ranking, traffic, or revenue outcome is promised by this sample.

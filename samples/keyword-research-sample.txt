@@ -1,0 +1,34 @@
+Zikap / Sample keyword and page map
+ILLUSTRATIVE EXAMPLE ONLY. These are invented topic ideas, not live keyword data. No search volume, difficulty, rankings, or traffic has been measured.
+Scenario: a fictional indoor-gardening shop at https://example.com
+
+PURPOSE
+Show how a research deliverable connects audience needs, search intent, and an appropriate page type.
+
+TOPIC 01 / LEARN
+Illustrative query: how to grow herbs indoors
+Audience need: understand light, watering, and the first steps.
+Possible page: https://example.com/guides/indoor-herbs
+Page type: practical beginner guide.
+Content notes: explain suitable conditions, steps, common difficulties, and relevant next reading.
+Decision to validate: whether this topic fits the products and expertise of the business.
+
+TOPIC 02 / COMPARE
+Illustrative query: indoor herb kits for beginners
+Audience need: compare options and understand trade-offs.
+Possible page: https://example.com/guides/choosing-a-herb-kit
+Page type: comparison or buying guide.
+Content notes: define decision criteria and support factual product comparisons with verified information.
+Decision to validate: whether a separate comparison page adds value beyond the product category.
+
+TOPIC 03 / SHOP
+Illustrative query: buy indoor herb kit
+Audience need: inspect available products and make a purchase decision.
+Possible page: https://example.com/indoor-herb-kits
+Page type: product category.
+Content notes: show accurate products, included items, requirements, and useful selection information.
+Decision to validate: whether existing page inventory already addresses this need.
+
+NEXT STEPS
+Confirm audience, market, language, business fit, and existing pages. Review current search results before finalizing intent or page decisions. Group related searches where one useful page can answer the same need. Record the provider, market, and date of any future keyword estimates.
+No live metrics or promised demand are included in this sample.

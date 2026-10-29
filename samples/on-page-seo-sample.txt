@@ -1,0 +1,42 @@
+Zikap / Sample on-page edit brief
+ILLUSTRATIVE EXAMPLE ONLY. No website was reviewed, no changes have been implemented, and no customer results are represented.
+Scenario: a fictional indoor-gardening shop at https://example.com
+Sample page: https://example.com/indoor-herb-kits
+
+PAGE PURPOSE
+Help a beginner understand the kit options, practical requirements, and what to compare before choosing.
+
+ILLUSTRATIVE CURRENT STATE
+A generic page called "Our Products" lists products without explaining what is included or who each option suits.
+
+PROPOSED TITLE
+Indoor Herb Kits for Beginners | Example Garden
+This is an editorial example. Confirm wording against the real offering and search intent.
+
+PROPOSED META DESCRIPTION
+Compare indoor herb kits, see what each includes, and learn the light and care requirements before choosing a kit for your home.
+Search engines may choose a different snippet; this is not a guaranteed search appearance.
+
+SUGGESTED PAGE OUTLINE
+H1: Indoor herb kits for beginners
+H2: Compare the available kits
+H2: What is included in each kit
+H2: Light, space, and care requirements
+H2: Choosing a kit for your home
+H2: Common questions before buying
+
+CONTENT TO VERIFY
+Available products, kit contents, growing requirements, shipping details, and any product claims must be accurate. Never invent availability or guarantees.
+
+INTERNAL LINK IDEAS
+Link to a beginner growing guide when extra context would help. Use descriptive text and a destination that actually answers the related question.
+
+REVIEW CHECKLIST
+- Confirm the page purpose and target audience.
+- Check that headings describe their sections.
+- Use approved product facts and useful supporting detail.
+- Review title and description in the page markup.
+- Check link destinations and mobile readability.
+- Agree publishing and implementation responsibilities separately.
+
+No keyword density or fixed word-count target is used. This sample does not predict rankings or sales.

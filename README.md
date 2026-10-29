@@ -36,3 +36,7 @@ No affiliation or endorsement is implied. The example report and scenarios are l
 ## Header and animated hero
 
 Shared two-level header and service mega menu on all pages. site.js handles Escape/outside click, current page links, and hero controls. CSS 3D dashboard uses transform-based floating panels and animated SVG/chart elements. Motion is illustrative, can be paused, respects prefers-reduced-motion, and pauses when offscreen. Pointer tilt runs only for a fine pointer. No external animation dependencies.
+
+## Sample library and About page
+
+reports.html includes three explicitly fictional previews and downloadable plain-text examples in samples/. No live audit or customer results are represented. about.html explains the service approach without inventing a team, client history, or credentials. Shared navigation and footer link to both pages. Sitemap updated to 10 pages.
