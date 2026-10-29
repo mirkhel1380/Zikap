@@ -61,8 +61,18 @@ export default {async fetch(req,env){
       const raw=await jsonBody(req);if(raw.consent!==true)throw new ApiError('Consent is required to store the project request.');
       if(raw.company)throw new ApiError('Unable to accept this request.');
       let o;try{o=validateOrder(raw);}catch(e){if(e instanceof ApiError)throw e;throw new ApiError('Check the website URL and required fields.');}
-      const id=crypto.randomUUID(),token=crypto.randomUUID()+crypto.randomUUID(),now=new Date().toISOString();
-      await env.DB.prepare('INSERT INTO orders (id,token_hash,created_at,updated_at,package_id,price_usd,name,email,website,pages,topic,language,market,goals) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,await hash(token),now,now,o.packageId,o.price,o.name,o.email,o.website,o.pages,o.topic,o.language,o.market,o.goals).run();
+      const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+      const clientKey=raw.requestId!==undefined||raw.receiptKey!==undefined;
+      if(clientKey&&(!uuid.test(raw.requestId)||typeof raw.receiptKey!=='string'||raw.receiptKey.length!==72||!uuid.test(raw.receiptKey.slice(0,36))||!uuid.test(raw.receiptKey.slice(36))))throw new ApiError('Invalid request receipt. Please reload and try again.');
+      const id=clientKey?raw.requestId:crypto.randomUUID(),token=clientKey?raw.receiptKey:crypto.randomUUID()+crypto.randomUUID(),now=new Date().toISOString();
+      const tokenHash=await hash(token);
+      const result=await env.DB.prepare('INSERT INTO orders (id,token_hash,created_at,updated_at,package_id,price_usd,name,email,website,pages,topic,language,market,goals) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(id,tokenHash,now,now,o.packageId,o.price,o.name,o.email,o.website,o.pages,o.topic,o.language,o.market,o.goals).run();
+      if(!result.meta.changes){
+        const existing=await env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first();
+        const fields={package_id:o.packageId,name:o.name,email:o.email,website:o.website,pages:o.pages,topic:o.topic,language:o.language,market:o.market,goals:o.goals};
+        if(!existing||existing.token_hash!==tokenHash||Object.entries(fields).some(([k,v])=>existing[k]!==v))throw new ApiError('This request receipt is already in use. Keep your existing receipt and check its status.',409);
+        return respond({id,token,status:existing.status,price:existing.price_usd,paymentCollected:false,replayed:true});
+      }
       return respond({id,token,status:'requested',price:o.price,paymentCollected:false},201);
     }
     const match=path.match(/^\/orders\/([a-f0-9-]{36})(\/revision)?$/);
@@ -82,9 +92,14 @@ export default {async fetch(req,env){
     if(path.startsWith('/admin/')){
       await rate(req,env,'admin',240);await admin(req,env);
       if(path==='/admin/orders'&&req.method==='GET'){
-        const cursor=new URL(req.url).searchParams.get('before')||'9999';
-        const result=await env.DB.prepare('SELECT * FROM orders WHERE created_at < ? ORDER BY created_at DESC LIMIT 50').bind(cursor).all();
-        return respond({orders:result.results.map(({token_hash,...row})=>row),next:result.results.length===50?result.results.at(-1).created_at:null});
+        const cursor=new URL(req.url).searchParams.get('before');
+        let result;
+        if(cursor){
+          const parts=cursor.split('|');if(parts.length!==2||!/^\d{4}-\d{2}-\d{2}T[0-9:.]+Z$/.test(parts[0])||!/^[a-f0-9-]{36}$/.test(parts[1]))throw new ApiError('Invalid pagination cursor.');
+          result=await env.DB.prepare('SELECT * FROM orders WHERE created_at < ? OR (created_at = ? AND id < ?) ORDER BY created_at DESC, id DESC LIMIT 50').bind(parts[0],parts[0],parts[1]).all();
+        }else result=await env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC, id DESC LIMIT 50').all();
+        const last=result.results.at(-1);
+        return respond({orders:result.results.map(({token_hash,...row})=>row),next:result.results.length===50?last.created_at+'|'+last.id:null});
       }
       const id=path.match(/^\/admin\/orders\/([a-f0-9-]{36})$/)?.[1];
       if(id&&req.method==='PATCH'){

@@ -2,6 +2,12 @@
 (() => {
   const $=id=>document.getElementById(id);
   const base=(window.ZIKAP_API_BASE||'').replace(/\/$/,'');
+  let pendingRequest=null;
+  const requestUUID=()=>{
+    if(typeof crypto.randomUUID==='function')return crypto.randomUUID();
+    const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+    const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+  };
   const states={requested:'Request received',accepted:'Accepted',in_progress:'In progress',delivered:'Report delivered',revision_requested:'Revision requested',declined:'Request declined'};
   async function api(path,method='GET',body,token){
     const headers={};if(body)headers['Content-Type']='application/json';if(token)headers.Authorization='Bearer '+token;
@@ -22,14 +28,25 @@
     event.preventDefault();if(!base)return;
     const button=$('order-form').querySelector('button[type="submit"]');button.disabled=true;$('order-message').textContent='Submitting your project request…';
     const body={packageId:$('service').value,name:$('customer-name').value,email:$('customer-email').value,website:$('order-website').value,pages:$('order-pages').value,topic:$('order-topic').value,language:$('order-language').value,market:$('order-market').value,goals:$('order-goals').value,consent:$('order-consent').checked,company:$('order-company').value};
+    const fingerprint=JSON.stringify(body);
+    let request;
     try{
-      const result=await api('/orders','POST',body);
+      if(!pendingRequest||pendingRequest.fingerprint!==fingerprint)pendingRequest={fingerprint,id:requestUUID(),token:requestUUID()+requestUUID()};
+      request=pendingRequest;
+      const result=await api('/orders','POST',{...body,requestId:request.id,receiptKey:request.token});
       $('track-id').value=result.id;$('track-key').value=result.token;
       const box=$('order-receipt');box.replaceChildren(element('h3','Request received'),element('p','Save your receipt before leaving. It contains the only private key for tracking your project.'),element('p','Order ID: '+result.id));
       const saveButton=element('button','Download private receipt','btn');saveButton.type='button';saveButton.addEventListener('click',()=>save('zikap-order-'+result.id+'.txt','Zikap project receipt\nOrder ID: '+result.id+'\nPrivate receipt key: '+result.token+'\nTrack at: https://mirkhel1380.github.io/Zikap/workspace.html#track\n\nKeep this file private. The request awaits acceptance. No payment was collected.'));const keyLabel=element('label','Your private receipt key');keyLabel.htmlFor='receipt-key';const keyInput=document.createElement('input');keyInput.id='receipt-key';keyInput.readOnly=true;keyInput.value=result.token;box.append(keyLabel,keyInput,saveButton);box.hidden=false;
       $('order-message').textContent='Your request is stored. Scope and timing still need acceptance. No payment was collected.';button.textContent='Request submitted';
       $('order-fields').disabled=true;
-    }catch(e){message('order-message',e);button.disabled=false;}
+    }catch(e){
+      message('order-message',e);
+      if(!request){button.disabled=false;return;}
+      $('track-id').value=request.id;$('track-key').value=request.token;
+      $('order-message').textContent+=' Submission is not confirmed. You can check its status below or retry the same details on this page without creating a second request.';
+      const box=$('order-receipt');box.replaceChildren(element('h3','Keep your recovery receipt'),element('p','A connection error does not confirm whether a request was saved. Keep this receipt to check the result before submitting again.'));
+      const recovery=element('button','Download recovery receipt','btn ghost');recovery.type='button';recovery.addEventListener('click',()=>save('zikap-request-recovery.txt','Zikap request recovery receipt\nOrder ID: '+request.id+'\nPrivate receipt key: '+request.token+'\n\nSubmission is NOT confirmed. Check this receipt in the Zikap workspace before submitting again. No payment was collected.'));box.append(recovery);box.hidden=false;button.disabled=false;
+    }
   });
   async function loadOrder(){
     $('track-message').textContent='Checking your project…';$('track-result').replaceChildren();
@@ -47,5 +64,15 @@
     }catch(e){message('track-message',e);}
   }
   $('track-form').addEventListener('submit',event=>{event.preventDefault();loadOrder();});
+  $('receipt-import').addEventListener('change',async event=>{
+    const file=event.target.files[0];if(!file)return;
+    try{
+      if(file.size>12000)throw new Error('Choose a Zikap receipt text file smaller than 12 KB.');
+      const content=await file.text(),id=content.match(/^Order ID: ([a-f0-9-]{36})\r?$/m)?.[1],key=content.match(/^Private receipt key: ([a-f0-9-]{72})\r?$/m)?.[1];
+      if(!id||!key)throw new Error('The receipt needs a valid Order ID and private receipt key.');
+      $('track-id').value=id;$('track-key').value=key;
+      $('track-message').textContent='Receipt opened. Use Check project status to retrieve the server’s latest update. The file itself does not confirm an accepted order.';
+    }catch(e){message('track-message',e);}finally{event.target.value='';}
+  });
   availability();
 })();

@@ -50,3 +50,9 @@ For the Cloudflare runtime: `npx wrangler d1 migrations apply zikap-orders --loc
 Monitor the delivery desk regularly; no automated notifications are sent. Requests contain names, emails, websites and project goals: only collect what is needed, keep owner access restricted, and delete records when no longer required. Receipt keys are shown once after submission and never stored by the app in browser storage. Lost keys have no automated recovery in this version. Customers must save their receipt. A separate specialist workflow, acceptance/timeline agreement and a legitimate payment method are needed before taking paid work; this code does not perform research on the owner's behalf.
 
 Production traces are disabled in the sample Wrangler configuration; never add logging of request bodies, keys or reports. D1 rows are authoritative; screenshots or local browser state are not order confirmation.
+
+## Request recovery and reliability
+
+The workspace creates a random request ID and receipt key before submission. Retrying the unchanged form in the same page reuses them; the server inserts at most one row and rejects mismatched contents or keys. The receipt key is held in page memory and only its hash is stored in D1. A failed network response offers a recovery receipt without claiming the request succeeded. Customers can open saved text receipts to populate the tracking form. Owner pagination uses creation time plus order ID, so tied timestamps do not skip records.
+
+Integration checks include retry deduplication and tied-timestamp pagination. A local browser QA run used the real Worker handler with a temporary SQLite adapter to verify intake, owner delivery, customer report viewing, one revision, receipt download and receipt import. This does not verify deployed Cloudflare bindings or make the production API active. The temporary QA server, in-memory test orders and test credential are not included in the repository.

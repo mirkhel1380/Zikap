@@ -54,3 +54,5 @@ The companion API source, D1 schema and integration tests are in `backend/`. **T
 ## Content planning
 
 The free `content-planner.html` schedules 4/8/12 user-provided topics across 30 days, provides editable briefs and manual workflow statuses, and exports CSV/text. No account, AI generation, live research, auto-publishing, analytics connection, or backend is required. Plans remain in memory until the customer explicitly saves a snapshot in this browser or downloads an editable JSON backup. Restore and file import validate and reconstruct a whitelisted plan shape; imports never execute markup or code. CSV and text remain available. `content-strategy.html` explains research, evidence, review, AI-search basics, manual publishing and current service scope.
+
+The workspace also supports saved receipt import and network recovery receipts. The backend prevents duplicate creation when a client retries the same request ID/key, and owner pagination handles tied timestamps. These server features have been tested locally; the production API remains unconnected.
