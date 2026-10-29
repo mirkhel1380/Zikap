@@ -58,7 +58,8 @@ export default {async fetch(req,env){
         try{await env.DB.prepare('SELECT key, count, expires FROM rate_limits LIMIT 1').first();checks.rateLimitsTable=true;}catch{checks.rateLimitsTable=false;}
       }
       const ready=Object.values(checks).every(value=>value===true);
-      return respond({service:'zikap-orders-api',version:'runtime-checks-1',ready,checks,orders:ready,automaticUrlAudit:false,payments:false},ready?200:503);
+      const adminSecretStatus=typeof env.ADMIN_TOKEN!=='string'||env.ADMIN_TOKEN.length===0?'missing':env.ADMIN_TOKEN.length<32?'too_short':'configured';
+      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,automaticUrlAudit:false,payments:false},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
     if(path==='/orders'&&req.method==='POST'){
