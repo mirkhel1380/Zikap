@@ -45,7 +45,7 @@ reports.html includes three explicitly fictional previews and downloadable plain
 
 `workspace.html` combines the working free HTML report, specialist-package intake UI, private receipt tracking, and report/revision delivery UI. Package buttons and the main navigation now lead here. `owner.html` is the owner delivery desk; it always requires server-side bearer authentication.
 
-The companion API source, D1 schema and integration tests are in `backend/`. **The API has not been deployed.** `api-config.js` contains an empty public API address, so project submission and tracking are disabled on the live website. Follow `backend/README.md` to connect a Cloudflare account, deploy, and complete the production test. Payments and live URL audits are not implemented; the instant checker uses HTML supplied by the customer.
+The companion API source, D1 schema and integration tests are in `backend/`. The API address is configured as `https://zikap.m-mirkhel20.workers.dev`. At the latest production check, `/health` returned `{"ready":false}`, so the workspace continues to disable project submission and tracking. Complete the runtime `ADMIN_TOKEN` secret and `DB` binding setup, then run the production test in `backend/README.md`. Payments and live URL audits are not implemented; the instant checker uses HTML supplied by the customer.
 
 ## Free tools
 
@@ -55,4 +55,4 @@ The companion API source, D1 schema and integration tests are in `backend/`. **T
 
 The free `content-planner.html` schedules 4/8/12 user-provided topics across 30 days, provides editable briefs and manual workflow statuses, and exports CSV/text. No account, AI generation, live research, auto-publishing, analytics connection, or backend is required. Plans remain in memory until the customer explicitly saves a snapshot in this browser or downloads an editable JSON backup. Restore and file import validate and reconstruct a whitelisted plan shape; imports never execute markup or code. CSV and text remain available. `content-strategy.html` explains research, evidence, review, AI-search basics, manual publishing and current service scope.
 
-The workspace also supports saved receipt import and network recovery receipts. The backend prevents duplicate creation when a client retries the same request ID/key, and owner pagination handles tied timestamps. These server features have been tested locally; the production API remains unconnected.
+The workspace also supports saved receipt import and network recovery receipts. The backend prevents duplicate creation when a client retries the same request ID/key, and owner pagination handles tied timestamps. These server features have been tested locally; the production API is configured but has not passed readiness or the production smoke test.
