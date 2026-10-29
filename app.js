@@ -27,8 +27,8 @@ function inspectHTML(source) {
     ['Suggested title length', title.length >= 30 && title.length <= 60, title.length + ' characters. 30–60 characters is an approximate guideline only.'],
     ['Meta description', description.length > 0, description ? description.slice(0, 180) : 'Add a clear summary of the page content.'],
     ['Suggested description length', description.length >= 70 && description.length <= 160, description.length + ' characters. 70–160 characters is an approximate guideline only.'],
-    ['One main H1 heading', h1.length === 1, 'H1 count: ' + h1.length + '. A clear main heading helps organize the page.'],
-    ['Heading order', headings.length > 0 && !skipped, headings.length === 0 ? 'No headings found.' : skipped ? 'A heading level was skipped. Review the heading hierarchy.' : 'No skipped heading levels found.'],
+    ['Single H1 (structure guideline)', h1.length === 1, 'H1 count: ' + h1.length + '. A clear main heading helps organize the page.'],
+    ['Heading order (accessibility guideline)', headings.length > 0 && !skipped, headings.length === 0 ? 'No headings found.' : skipped ? 'A heading level was skipped. Review the heading hierarchy.' : 'No skipped heading levels found.'],
     ['Image alt attributes', missingAlt === 0, images.length === 0 ? 'No images found. This check is not applicable and counts as passed.' : missingAlt + ' image(s) missing an alt attribute. Decorative images may use empty alt text. Text quality is not assessed.'],
     ['Mobile viewport', /width\s*=\s*device-width/i.test(meta('viewport')?.getAttribute('content') || ''), 'Checks for width=device-width in the viewport. This does not verify mobile design quality.'],
     ['Canonical URL', absoluteCanonical, 'An absolute HTTP or HTTPS canonical URL is recommended. The destination is not verified.'],
@@ -55,4 +55,4 @@ el('demo').addEventListener('click', () => {
 });
 el('upload').addEventListener('change', async event => { const file = event.target.files[0]; if (!file) return; el('tool-error').textContent = ''; if (file.size > 2000000) { el('tool-error').textContent = 'The file must be smaller than 2 MB.'; event.target.value = ''; return; } try { el('source').value = await file.text(); el('analyze').click(); } catch { el('tool-error').textContent = 'Could not read the file. Please try again.'; } });
 document.querySelectorAll('[data-service]').forEach(a => a.addEventListener('click', () => { el('service').value = a.dataset.service; }));
-el('contact').addEventListener('submit', event => { event.preventDefault(); download('zikap-project-brief.txt', 'Zikap — Project brief\n\nWebsite: ' + el('site').value + '\nService: ' + el('service').value + '\nGoals: ' + el('goal').value + '\n\nThis file has not been submitted automatically.'); el('brief-status').textContent = 'Your brief is ready to download. No online inquiry has been submitted.'; });
+el('contact')?.addEventListener('submit', event => { event.preventDefault(); download('zikap-project-brief.txt', 'Zikap — Project brief\n\nWebsite: ' + el('site').value + '\nService: ' + el('service').value + '\nGoals: ' + el('goal').value + '\n\nThis file has not been submitted automatically.'); el('brief-status').textContent = 'Your brief is ready to download. No online inquiry has been submitted.'; });
