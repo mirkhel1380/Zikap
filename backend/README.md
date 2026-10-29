@@ -1,6 +1,6 @@
 # Zikap project requests and delivery
 
-This companion Cloudflare Worker keeps the public website on GitHub Pages. It is deployed as Worker `zikap` at `https://zikap.m-mirkhel20.workers.dev`, and `../api-config.js` points to it. At the latest production check, `/health` returned `{"ready":false}`; runtime configuration and the production smoke test are still outstanding. The public workspace disables submission until a configured API passes its readiness check. Do not announce online orders as active until the complete production smoke test below passes.
+This companion Cloudflare Worker keeps the public website on GitHub Pages. It is deployed as Worker `zikap` at `https://zikap.m-mirkhel20.workers.dev`, and `../api-config.js` points to it. The deployed `/health` now returns `ready:true` with `adminSecretStatus:"configured"`; the database binding and both tables also pass. The public form enables requests and tracking. The production smoke test involving persistent order creation and owner delivery is still outstanding. The public workspace disables submission until a configured API passes its readiness check. Do not announce online orders as active until the complete production smoke test below passes.
 
 ## What works without a server
 
