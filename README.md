@@ -40,3 +40,9 @@ Shared two-level header and service mega menu on all pages. site.js handles Esca
 ## Sample library and About page
 
 reports.html includes three explicitly fictional previews and downloadable plain-text examples in samples/. No live audit or customer results are represented. about.html explains the service approach without inventing a team, client history, or credentials. Shared navigation and footer link to both pages. Sitemap updated to 10 pages.
+
+## Customer workspace
+
+`workspace.html` combines the working free HTML report, specialist-package intake UI, private receipt tracking, and report/revision delivery UI. Package buttons and the main navigation now lead here. `owner.html` is the owner delivery desk; it always requires server-side bearer authentication.
+
+The companion API source, D1 schema and integration tests are in `backend/`. **The API has not been deployed.** `api-config.js` contains an empty public API address, so project submission and tracking are disabled on the live website. Follow `backend/README.md` to connect a Cloudflare account, deploy, and complete the production test. Payments and live URL audits are not implemented; the instant checker uses HTML supplied by the customer.

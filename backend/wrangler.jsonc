@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "zikap-orders-api",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-29",
+  "workers_dev": true,
+  "vars": {"ALLOWED_ORIGIN": "https://mirkhel1380.github.io"},
+  "d1_databases": [{"binding": "DB", "database_name": "zikap-orders", "database_id": "REPLACE_WITH_D1_DATABASE_ID", "migrations_dir": "migrations"}],
+  "observability": {"enabled": false}
+}

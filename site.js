@@ -74,7 +74,7 @@ document.querySelectorAll('[data-service-choice]').forEach(button => {
   });
 });
 
-// Package requests prepare a local brief; no order or payment is submitted.
+// Display the selected specialist package scope. Order submission is handled by workspace.js.
 const paidPackages = {"audit": {"name": "Technical SEO Starter", "price": 29, "scope": "One website; up to 5 publicly accessible URLs; basic access, metadata, internal-link and indexing-signal review.", "output": "Prioritized findings and an action checklist. Implementation is quoted separately."}, "keywords": {"name": "Keyword Research Starter", "price": 19, "scope": "One topic, one language, one target market; 25 keyword ideas grouped by intent and mapped to up to 5 existing or proposed pages.", "output": "Keyword / topic map with intent notes and page recommendations. Live search-volume and difficulty metrics are not included."}, "onpage": {"name": "On-page SEO Starter", "price": 39, "scope": "One website; edit recommendations for up to 3 existing pages in one language.", "output": "Proposed titles, meta descriptions, heading outlines and internal-link recommendations. Publishing and full article writing are quoted separately."}, "bundle": {"name": "SEO Starter Bundle", "price": 79, "scope": "The Technical SEO Starter, Keyword Research Starter and On-page SEO Starter scopes for the same website, language and target market.", "output": "5-page audit, 25-keyword map and edit recommendations for 3 pages. The listed starter exclusions still apply."}};
 const packageSelect = document.getElementById('service');
 const packageSummary = document.getElementById('package-summary');

@@ -1,0 +1,52 @@
+# Zikap project requests and delivery
+
+This companion Cloudflare Worker keeps the public website on GitHub Pages. It is **not deployed or connected yet**. `../api-config.js` is intentionally empty. The public workspace disables submission until a configured API passes its readiness check. Do not announce online orders as active until the complete production smoke test below passes.
+
+## What works without a server
+
+The existing browser-local checker runs ten heuristic checks on customer-provided HTML, displays real findings, and downloads a report. It does not fetch a live website or fulfill the specialist packages. No search volume, difficulty, rankings, automatic keyword research, or paid audit is fabricated.
+
+## What this server implements
+
+- D1-backed project requests with server-controlled package prices and page limits.
+- A random private receipt key (only its SHA-256 hash is stored) for customer tracking.
+- Owner-authenticated request list, status updates, text report delivery, and deletion.
+- Report reading/download in the customer workspace, plus one revision request after delivery.
+- Fixed-origin CORS, body limits, SQL parameter binding, no-store responses and per-IP/hour rate limits.
+- No payments, email delivery, account recovery, URL crawling, or external SEO database. No request is automatically accepted. A person must complete the promised research/recommendations and use `owner.html` to deliver the report.
+
+## Connect a Cloudflare account
+
+Run these steps from `backend/` after signing into the business's Cloudflare account. There is no custom domain requirement.
+
+1. Install Node.js and run `npm install` (creates a local lockfile).
+2. Run `npx wrangler login` for account authentication. Never send account credentials or tokens in chat or commit them.
+3. Run `npx wrangler d1 create zikap-orders`. Copy its database ID into `wrangler.jsonc`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
+4. Run `npx wrangler d1 migrations apply zikap-orders --remote`.
+5. Generate a cryptographically random owner secret of at least 32 characters in a password manager. Run `npx wrangler secret put ADMIN_TOKEN`, enter it at the hidden prompt, and keep it in the password manager. Never put it in `api-config.js`, browser storage, GitHub Actions files, or the repository.
+6. Run `npx wrangler deploy`. Record the returned HTTPS workers.dev URL.
+7. Check `<worker-url>/health` reports `ready:true`. Set `window.ZIKAP_API_BASE` in `../api-config.js` to that URL. Commit and deploy that public address only.
+8. Run the production smoke test below before opening requests to customers. Check current Cloudflare pricing/usage limits in the account; this repo does not purchase a plan or promise unlimited/free operation.
+
+`ALLOWED_ORIGIN` is the GitHub Pages origin, `https://mirkhel1380.github.io` (not its /Zikap path). Change it when the website origin changes. CORS is not authentication; the admin and receipt bearer keys provide access control.
+
+## Local verification
+
+`npm test` uses Node.js 24's SQLite module to exercise real SQL, persistence, server-side validation, receipt access, owner authentication, delivery, one revision, deletion, origin rejection, body limits and rate limits. This does not substitute for testing deployed Cloudflare bindings.
+
+For the Cloudflare runtime: `npx wrangler d1 migrations apply zikap-orders --local`, set a test-only `ADMIN_TOKEN` in an ignored `.dev.vars`, then `npm run dev`. For browser testing set a local allowed origin in a local-only Wrangler configuration. Keep all test keys out of tracked files. Configure a valid test API address in a local-only copy of `api-config.js`.
+
+## Production smoke test
+
+- Submit a clearly marked test request from workspace.html, saving the receipt. Verify package price is controlled by the server.
+- Check the request persists after reloading. Verify wrong receipt keys fail.
+- Open owner.html, authenticate with the owner secret, and set acceptance/timing in the customer-visible note. Publish a test report and mark delivered.
+- Retrieve and download the same report using only the customer receipt. Submit one revision; verify another cannot be submitted.
+- Delete the test request in the owner desk. Lock the owner desk after use.
+- If any step fails, restore the empty API address so the website stops accepting requests.
+
+## Operating the service
+
+Monitor the delivery desk regularly; no automated notifications are sent. Requests contain names, emails, websites and project goals: only collect what is needed, keep owner access restricted, and delete records when no longer required. Receipt keys are shown once after submission and never stored by the app in browser storage. Lost keys have no automated recovery in this version. Customers must save their receipt. A separate specialist workflow, acceptance/timeline agreement and a legitimate payment method are needed before taking paid work; this code does not perform research on the owner's behalf.
+
+Production traces are disabled in the sample Wrangler configuration; never add logging of request bodies, keys or reports. D1 rows are authoritative; screenshots or local browser state are not order confirmation.

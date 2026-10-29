@@ -1,0 +1,20 @@
+'use strict';
+(()=>{
+ const $=id=>document.getElementById(id),base=(window.ZIKAP_API_BASE||'').replace(/\/$/,'');let key='',cursor=null;
+ const node=(tag,content)=>{const n=document.createElement(tag);n.textContent=content;return n;};
+ async function api(path,method='GET',body){const r=await fetch(base+path,{method,headers:{Authorization:'Bearer '+key,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(20000)});const data=await r.json();if(!r.ok)throw new Error(data.error||'Service unavailable.');return data;}
+ function render(order){
+  const box=node('article','');box.className='owner-order';box.append(node('h2',order.name+' · '+order.package_id),node('p','Order: '+order.id+' · '+order.created_at),node('p',order.email+' · '+order.website),node('pre','Page URLs: '+order.pages+'\nTopic: '+order.topic+'\nLanguage: '+order.language+'\nMarket: '+order.market+'\nGoals: '+order.goals+'\nRevision request: '+order.revision_note));
+  const form=document.createElement('form'),prefix='o-'+order.id;
+  const label=(title,element,id)=>{const l=node('label',title);l.htmlFor=id;element.id=id;form.append(l,element);};
+  const state=document.createElement('select');['requested','accepted','in_progress','delivered','declined'].forEach(s=>{const o=node('option',s.replaceAll('_',' '));o.value=s;state.append(o);});state.value=order.status==='revision_requested'?'in_progress':order.status;label('Status',state,prefix+'-status');
+  const note=document.createElement('textarea');note.maxLength=2000;note.value=order.owner_note;label('Customer-visible update: acceptance, timing, and next steps',note,prefix+'-note');
+  const report=document.createElement('textarea');report.maxLength=90000;report.value=order.report;label('Report / deliverable (plain text, up to 90,000 characters)',report,prefix+'-report');
+  const upload=document.createElement('input');upload.type='file';upload.accept='.txt,text/plain';label('Import a prepared text report',upload,prefix+'-upload');upload.addEventListener('change',async()=>{const file=upload.files[0];if(!file)return;if(file.size>90000){status.textContent='Report file must be at most 90 KB.';return;}report.value=await file.text();});
+  const save=node('button','Save customer update');save.type='submit';save.className='btn';const remove=node('button','Delete this request');remove.type='button';remove.className='btn ghost';const status=node('p','');status.setAttribute('role','status');form.append(save,remove,status);
+  form.addEventListener('submit',async e=>{e.preventDefault();save.disabled=true;try{await api('/admin/orders/'+order.id,'PATCH',{status:state.value,note:note.value,report:report.value});status.textContent='Saved. The customer can see this update with their receipt.';}catch(err){status.textContent=err.message;}save.disabled=false;});
+  remove.addEventListener('click',async()=>{if(!confirm('Permanently delete this project request and report?'))return;try{await api('/admin/orders/'+order.id,'DELETE');box.remove();}catch(err){status.textContent=err.message;}});box.append(form);$('owner-orders').append(box);
+ }
+ async function load(more=false){if(!base){$('owner-status').textContent='The order server has not been connected yet.';return;}try{if(!more){$('owner-orders').replaceChildren();cursor=null;}$('owner-status').textContent='Loading…';const data=await api('/admin/orders'+(cursor?'?before='+encodeURIComponent(cursor):''));data.orders.forEach(render);cursor=data.next;$('owner-more').hidden=!cursor;$('owner-status').textContent=data.orders.length+' request(s) loaded.';}catch(e){$('owner-status').textContent=e.message;}}
+ $('owner-login').addEventListener('submit',e=>{e.preventDefault();key=$('owner-key').value;$('owner-key').value='';load();});$('owner-more').addEventListener('click',()=>load(true));$('owner-lock').addEventListener('click',()=>{key='';$('owner-key').value='';$('owner-orders').replaceChildren();$('owner-more').hidden=true;$('owner-status').textContent='Desk locked.';});
+})();
