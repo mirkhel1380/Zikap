@@ -50,3 +50,7 @@ The companion API source, D1 schema and integration tests are in `backend/`. **T
 ## Free tools
 
 `tools.html` includes the free HTML checker, live search snippet editor with title/meta tag text export, and a keyword-list cleaner with CSV export. The keyword organizer uses customer input and simple English intent rules only; it does not query a keyword database or generate search-volume/difficulty figures. Specialist-package pricing covers human review and tailored deliverables. The shared header background matches the footer (#e9efdf).
+
+## Content planning
+
+The free `content-planner.html` schedules 4/8/12 user-provided topics across 30 days, provides editable briefs and manual workflow statuses, and exports CSV/text. No account, AI generation, live research, auto-publishing, analytics connection, or backend is required. Plans are in memory only; customers must download before reloading. `content-strategy.html` explains research, evidence, review, AI-search basics, manual publishing and current service scope.
