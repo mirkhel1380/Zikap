@@ -17,6 +17,27 @@ document.addEventListener('keydown', event => {
 disclosures.forEach(menu => menu.addEventListener('focusout', () => {
   requestAnimationFrame(() => { if (!menu.contains(document.activeElement)) menu.open = false; });
 }));
+// Desktop dropdowns open on hover; native disclosure behavior remains for touch and keyboards.
+const desktopHover = matchMedia('(hover: hover) and (pointer: fine)');
+document.querySelectorAll('.desktop-links > details').forEach(menu => {
+  let closeTimer;
+  const cancelClose = () => clearTimeout(closeTimer);
+  menu.addEventListener('pointerenter', event => {
+    if (!desktopHover.matches || event.pointerType !== 'mouse') return;
+    cancelClose();
+    disclosures.filter(other => other !== menu).forEach(other => { other.open = false; });
+    menu.open = true;
+  });
+  menu.addEventListener('pointerleave', event => {
+    if (!desktopHover.matches || event.pointerType !== 'mouse') return;
+    cancelClose();
+    // Allow time to cross into the dropdown without it disappearing.
+    closeTimer = setTimeout(() => {
+      if (!menu.matches(':focus-within')) menu.open = false;
+    }, 220);
+  });
+  menu.addEventListener('focusin', cancelClose);
+});
 const currentPage = location.pathname.split('/').pop() || 'index.html';
 document.querySelectorAll('header a[href]').forEach(a => {
   if (a.getAttribute('href') === currentPage) a.setAttribute('aria-current', 'page');
