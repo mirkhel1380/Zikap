@@ -35,9 +35,7 @@ if (scene) {
     paused = !paused;
     scene.classList.toggle('is-paused', paused);
     toggle.setAttribute('aria-pressed', String(paused));
-    toggle.replaceChildren();
-    const symbol = document.createElement('span'); symbol.setAttribute('aria-hidden', 'true'); symbol.textContent = paused ? '▷' : 'Ⅱ';
-    toggle.append(symbol, document.createTextNode(paused ? ' Resume motion' : ' Pause motion'));
+    toggle.textContent = paused ? 'Resume motion' : 'Pause motion';
     tilt.style.removeProperty('--tilt-x'); tilt.style.removeProperty('--tilt-y');
   });
   scene.addEventListener('pointermove', event => {
