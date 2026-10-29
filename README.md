@@ -1,6 +1,6 @@
 # Zikap
 
-A responsive Dari (RTL) SEO services website and browser-local HTML checker. No build system or external dependencies.
+A responsive English (LTR) SEO services website and browser-local HTML checker. No build system or external dependencies.
 
 ## Publish on GitHub Pages
 
@@ -12,7 +12,7 @@ Run `python3 -m http.server 8000` in this directory and open http://localhost:80
 
 ## Features and limits
 
-- Dari service pages, responsive layout, FAQ and service selection.
+- English service pages, responsive layout, FAQ and service selection.
 - HTML upload/paste and 10 transparent heuristic checks. Reports download as text.
 - HTML is parsed in an inert template, never inserted into the live page. No remote website fetching or third-party proxy.
 - Scores are internal check completion percentages, not Google scores or ranking predictions. No speed, backlink, indexing or keyword rank data.
