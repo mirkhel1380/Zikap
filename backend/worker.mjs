@@ -1,7 +1,7 @@
 // Project delivery, customer workspaces and guarded checkout. No email delivery or live crawling.
 import {accountRoute,accountsReady} from './accounts.mjs';
 import {paymentsReady,paymentSummaries,protectOwnerChange,stripeWebhook} from './payments.mjs';
-import {projectMessages} from './messages.mjs';
+import {projectMessages,unreadCounts} from './messages.mjs';
 import {prices} from './catalog.mjs';
 const states = ['requested','accepted','in_progress','delivered','declined'];
 class ApiError extends Error { constructor(message,status=400){super(message);this.status=status;} }
@@ -121,13 +121,13 @@ export default {async fetch(req,env){
           result=await env.DB.prepare('SELECT * FROM orders WHERE created_at < ? OR (created_at = ? AND id < ?) ORDER BY created_at DESC, id DESC LIMIT 50').bind(parts[0],parts[0],parts[1]).all();
         }else result=await env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC, id DESC LIMIT 50').all();
         const last=result.results.at(-1);
-        const payments=await paymentSummaries(env,result.results.map(row=>row.id));
-        return respond({orders:result.results.map(({token_hash,...row})=>({...row,payment:payments.get(row.id)})),next:result.results.length===50?last.created_at+'|'+last.id:null});
+        const payments=await paymentSummaries(env,result.results.map(row=>row.id)),unread=await unreadCounts(env,result.results.map(row=>row.id),'owner');
+        return respond({orders:result.results.map(({token_hash,...row})=>({...row,payment:payments.get(row.id),unreadMessages:unread.get(row.id)})),next:result.results.length===50?last.created_at+'|'+last.id:null});
       }
-      const threadId=path.match(/^\/admin\/orders\/([a-f0-9-]{36})\/messages$/)?.[1];
+      const threadMatch=path.match(/^\/admin\/orders\/([a-f0-9-]{36})\/messages(\/read)?$/),threadId=threadMatch?.[1];
       if(threadId){
         const row=await env.DB.prepare('SELECT id FROM orders WHERE id=?').bind(threadId).first();if(!row)throw new ApiError('Order not found.',404);
-        const result=await projectMessages(req,env,row.id,'owner',{ApiError,jsonBody,rate});return respond(result.body,result.status,result.headers);
+        const result=await projectMessages(req,env,row.id,'owner',{ApiError,jsonBody,rate},!!threadMatch[2]);return respond(result.body,result.status,result.headers);
       }
       const id=path.match(/^\/admin\/orders\/([a-f0-9-]{36})$/)?.[1];
       if(id&&req.method==='PATCH'){

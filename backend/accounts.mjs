@@ -1,7 +1,7 @@
 // First-party customer sessions. No email delivery or password-reset email service.
 import {paymentsReady,stripeConfigured,paymentSummaries,checkout,reconcilePayment} from './payments.mjs';
 import {actionsReady,projectActions} from './actions.mjs';
-import {messagesReady,projectMessages} from './messages.mjs';
+import {messagesReady,projectMessages,messageReadsReady,unreadCounts} from './messages.mjs';
 const COOKIE='__Host-zikap_session',LIFETIME=7*24*60*60;
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const encode=new TextEncoder();
@@ -27,7 +27,7 @@ export async function accountRoute(req,env,h){
  const result=(body,status=200,headers={})=>({body,status,headers});
  const emailOf=value=>{const email=text(value,254).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new ApiError('Enter a valid email address.');return email;};
  const passwordOf=value=>{if(typeof value!=='string'||value.length<15||value.length>128)throw new ApiError('Use a password between 15 and 128 characters.');return value;};
- if(path==='/account-api/status'&&req.method==='GET')return result({ready:await accountsReady(env),emailVerification:false,projectMessages:await messagesReady(env),actionPlans:await actionsReady(env),payments:await paymentsReady(env),paymentTestMode:stripeConfigured(env)?!env.STRIPE_SECRET_KEY.includes('_live_'):null});
+ if(path==='/account-api/status'&&req.method==='GET')return result({ready:await accountsReady(env),emailVerification:false,messageReadTracking:await messageReadsReady(env),projectMessages:await messagesReady(env),actionPlans:await actionsReady(env),payments:await paymentsReady(env),paymentTestMode:stripeConfigured(env)?!env.STRIPE_SECRET_KEY.includes('_live_'):null});
  if(!await accountsReady(env))throw new ApiError('Customer accounts are being prepared. Please return shortly.',503);
  // Cookie-authenticated writes are same-origin only; CORS does not replace this check.
  if(!['GET','HEAD'].includes(req.method)&&req.headers.get('origin')!==new URL(req.url).origin)throw new ApiError('Open the account page and try again.',403);
@@ -47,7 +47,7 @@ export async function accountRoute(req,env,h){
   return {'Set-Cookie':cookie(token)};
  }
  const publicUser=u=>({name:u.name,email:u.email,emailVerified:false});
- const accountOrder=async(row,knownPayment)=>{let pages=[];try{pages=JSON.parse(row.pages);}catch{}const payment=knownPayment||(await paymentSummaries(env,[row.id])).get(row.id);return {...receipt(row),pages,topic:row.topic,language:row.language,market:row.market,goals:row.goals,payment,paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')};};
+ const accountOrder=async(row,knownPayment,knownUnread)=>{let pages=[];try{pages=JSON.parse(row.pages);}catch{}const payment=knownPayment||(await paymentSummaries(env,[row.id])).get(row.id);const unread=knownUnread!==undefined?knownUnread:(await unreadCounts(env,[row.id],'customer')).get(row.id);return {...receipt(row),unreadMessages:unread,pages,topic:row.topic,language:row.language,market:row.market,goals:row.goals,payment,paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')};};
  if(path==='/account-api/register'&&req.method==='POST'){
   await rate(req,env,'account-register',5);const data=await jsonBody(req,5000),email=emailOf(data.email),password=passwordOf(data.password),name=text(data.name,100);
   if(data.consent!==true)throw new ApiError('Please agree to store the details needed for your account and projects.');
@@ -101,7 +101,7 @@ export async function accountRoute(req,env,h){
   const sql='SELECT o.* FROM orders o JOIN customer_order_links l ON l.order_id=o.id WHERE l.user_id=?';
   if(cursor){const [date,id,...rest]=cursor.split('|');if(rest.length||!/^\d{4}-\d{2}-\d{2}T[0-9:.]+Z$/.test(date)||!uuid.test(id))throw new ApiError('Invalid project list cursor.');statement=env.DB.prepare(sql+' AND (o.created_at<? OR (o.created_at=? AND o.id<?)) ORDER BY o.created_at DESC,o.id DESC LIMIT 50').bind(user.id,date,date,id);}
   else statement=env.DB.prepare(sql+' ORDER BY o.created_at DESC,o.id DESC LIMIT 50').bind(user.id);
-  const {results}=await statement.all(),last=results.at(-1),payments=await paymentSummaries(env,results.map(row=>row.id));return result({orders:await Promise.all(results.map(row=>accountOrder(row,payments.get(row.id)))),next:results.length===50?last.created_at+'|'+last.id:null});
+  const {results}=await statement.all(),last=results.at(-1),payments=await paymentSummaries(env,results.map(row=>row.id)),unread=await unreadCounts(env,results.map(row=>row.id),'customer');return result({orders:await Promise.all(results.map(row=>accountOrder(row,payments.get(row.id),unread.get(row.id)))),next:results.length===50?last.created_at+'|'+last.id:null});
  }
  if(path==='/account-api/orders'&&req.method==='POST'){
   await rate(req,env,'account-create',5);const raw=await jsonBody(req);if(raw.consent!==true)throw new ApiError('Consent is required to store the project request.');if(raw.company)throw new ApiError('Unable to accept this request.');
@@ -127,11 +127,11 @@ export async function accountRoute(req,env,h){
   if(owner?.user_id!==user.id)throw new ApiError('This project is already linked to another account.',409);
   return result({order:await accountOrder(row)});
  }
- const messageMatch=path.match(/^\/account-api\/orders\/([a-f0-9-]{36})\/messages$/);
+ const messageMatch=path.match(/^\/account-api\/orders\/([a-f0-9-]{36})\/messages(\/read)?$/);
  if(messageMatch){
   await rate(req,env,'account-read',240);const row=await env.DB.prepare('SELECT o.id FROM orders o JOIN customer_order_links l ON l.order_id=o.id WHERE o.id=? AND l.user_id=?').bind(messageMatch[1],user.id).first();
   if(!row)throw new ApiError('Project not found.',404);
-  return projectMessages(req,env,row.id,'customer',h);
+  return projectMessages(req,env,row.id,'customer',h,!!messageMatch[2]);
  }
  const actionMatch=path.match(/^\/account-api\/orders\/([a-f0-9-]{36})\/actions(?:\/([a-f0-9-]{36}))?$/);
  if(actionMatch){

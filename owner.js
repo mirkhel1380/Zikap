@@ -31,20 +31,21 @@
   return parts.join('\n');
  }
  function filterOrders(){
-  const query=$('owner-search').value.trim().toLowerCase(),state=$('owner-filter').value;let shown=0,review=0,delivered=0;
+  const query=$('owner-search').value.trim().toLowerCase(),state=$('owner-filter').value;let shown=0,review=0,delivered=0,unread=0,unreadKnown=true;
   for(const {order,box} of loaded.values()){
    if(['requested','revision_requested'].includes(order.status))review++;
-   if(order.status==='delivered')delivered++;
-   const matches=(!state||order.status===state)&&(!query||[order.id,order.name,order.email,order.website].join(' ').toLowerCase().includes(query));
+   if(order.status==='delivered')delivered++;if(Number.isInteger(order.unreadMessages))unread+=order.unreadMessages;else unreadKnown=false;
+   const matches=(!state||(state==='unread'?order.unreadMessages>0:order.status===state))&&(!query||[order.id,order.name,order.email,order.website].join(' ').toLowerCase().includes(query));
    box.hidden=!matches;if(matches)shown++;
   }
-  $('owner-total').textContent=String(loaded.size);$('owner-review').textContent=String(review);$('owner-delivered').textContent=String(delivered);
+  $('owner-unread').textContent=unreadKnown?String(unread):'—';$('owner-total').textContent=String(loaded.size);$('owner-review').textContent=String(review);$('owner-delivered').textContent=String(delivered);
   $('owner-filter-status').textContent=shown+' of '+loaded.size+' loaded requests shown.';$('owner-empty').hidden=shown!==0;
  }
  function render(order){
   const p=packages[order.package_id],box=node('article','','owner-order'),prefix='o-'+order.id;
   const head=node('div','','owner-order-heading'),badge=node('span',states[order.status]||order.status,'delivery-status');
   head.append(node('h2',p?p.title:order.package_id),badge);box.append(head,node('p',order.name+' · '+order.email),node('p',order.website),node('p','Order: '+order.id+' · Received: '+order.created_at,'tiny'));
+  const unreadNotice=node('p',order.unreadMessages>0?order.unreadMessages+' unread customer message'+(order.unreadMessages===1?'':'s'):'','owner-unread-notice');unreadNotice.hidden=!(order.unreadMessages>0);box.append(unreadNotice);
   const payment=order.payment;
   if(payment){const labels={unpaid:'No Stripe payment recorded',pending:'Stripe checkout pending',paid:'Stripe payment confirmed',partially_refunded:'Partially refunded in Stripe',refunded:'Refunded in Stripe'};box.append(node('p',(labels[payment.status]||payment.status)+(payment.testMode?' / TEST MODE — no real charge':'')+(payment.amountCents?' · $'+(payment.amountCents/100).toFixed(2)+' USD':''),'availability'));}
   const brief=node('details','','owner-brief');brief.open=true;brief.append(node('summary','Customer brief'),node('pre','Page URLs: '+order.pages+'\nTopic: '+order.topic+'\nLanguage: '+order.language+'\nMarket: '+order.market+'\nGoals: '+order.goals));
@@ -91,8 +92,8 @@
   });
   remove.addEventListener('click',async()=>{if(!confirm('Permanently delete this project request, report, saved actions and messages?'))return;remove.disabled=true;try{await api('/admin/orders/'+order.id,'DELETE');loaded.delete(order.id);box.remove();filterOrders();}catch(err){status.textContent=err.message;remove.disabled=false;}});
   const threadDetails=node('details','','owner-thread'),threadHost=node('section',''),threadSession=session;let mounted=false;
-  threadDetails.append(node('summary','Project messages'),node('p','Account customers can ask questions here. Replies stay with this project; no email is sent. This conversation does not consume the included formal revision.','tiny'),threadHost);
-  threadDetails.addEventListener('toggle',()=>{if(threadDetails.open&&!mounted){mounted=true;window.ZikapProjectThread.mount(threadHost,{api,path:'/admin/orders/'+order.id+'/messages',role:'owner',alive:()=>threadSession===session&&threadHost.isConnected});}});
+  const threadSummary=node('summary','Project messages'+(order.unreadMessages>0?' / '+order.unreadMessages+' unread':''));threadDetails.append(threadSummary,node('p','Account customers can ask questions here. Replies stay with this project; no email is sent. This conversation does not consume the included formal revision.','tiny'),threadHost);
+  threadDetails.addEventListener('toggle',()=>{if(threadDetails.open&&!mounted){mounted=true;window.ZikapProjectThread.mount(threadHost,{api,path:'/admin/orders/'+order.id+'/messages',role:'owner',alive:()=>threadSession===session&&threadHost.isConnected,onUnreadChange:count=>{order.unreadMessages=count;unreadNotice.textContent=count>0?count+' unread customer message'+(count===1?'':'s'):'';unreadNotice.hidden=!(count>0);threadSummary.textContent='Project messages'+(count>0?' / '+count+' unread':'');filterOrders();}});}});
   box.append(form,threadDetails);loaded.set(order.id,{order,box});$('owner-orders').append(box);
  }
  async function load(more=false){

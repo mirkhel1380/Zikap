@@ -24,7 +24,7 @@
  function clearAccount(message){
   document.title='My account | Zikap';
   document.body.classList.remove('signed-in','sidebar-open');document.dispatchEvent(new Event('zikap-session-cleared'));user=null;epoch++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
-  for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('account-name').textContent='My account';$('account-avatar').textContent='Z';$('greeting').textContent='Welcome back.';$('profile-line').textContent='';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
+  for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('account-name').textContent='My account';$('account-avatar').textContent='Z';$('greeting').textContent='Welcome back.';$('profile-line').textContent='';$('nav-unread-badge').hidden=true;$('unread-count').textContent='0';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
   document.querySelectorAll('input[type=password]').forEach(input=>{input.value='';});$('app-status').textContent=message;authMode('login');
  }
  function sessionError(e){if(e.status===401){clearAccount('Your session ended. Sign in to continue.');return true;}return false;}
@@ -78,7 +78,7 @@
  function websiteLabel(order){try{return new URL(order.website).hostname;}catch{return order.website;}}
  function projectRow(order,compact=false){
   const card=node('article','','project-card'+(compact?' compact':'')),identity=node('div','','project-identity'),mark=node('span',(websiteLabel(order)||'W').slice(0,1).toUpperCase(),'website-mark'),text=node('div','');
-  text.append(node('h3',websiteLabel(order)),node('p',names[order.packageId]||order.packageId));identity.append(mark,text);
+  text.append(node('h3',websiteLabel(order)),node('p',names[order.packageId]||order.packageId));if(order.unreadMessages>0)text.append(node('span',order.unreadMessages+' unread message'+(order.unreadMessages===1?'':'s'),'unread-tag'));identity.append(mark,text);
   const status=node('span',states[order.status]||order.status,'status status-'+order.status),meta=node('div','','project-meta');meta.append(node('strong','$'+order.price+' USD'),node('span',new Date(order.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric'})));
   const open=button('View project');open.setAttribute('aria-label','View project for '+websiteLabel(order));open.addEventListener('click',()=>openProject(order.id));card.append(identity,status,meta,open);return card;
  }
@@ -90,7 +90,7 @@
   const empty=(title,text)=>{const box=node('div','','dashboard-empty');box.append(node('span','','empty-emblem'),node('h3',title),node('p',text));const link=node('a','Start a project','btn');link.href='#new-project';box.append(link);return box;};
   if(!all.length){recent.append(empty('Your first project starts here.','Choose a focused package and tell us what you want to improve.'));updates.append(node('p','Project updates will appear after you submit a request.','empty-copy'));}
   if(!reports.length)library.append(empty('A home for your SEO reports.','Your specialist reports will appear here when added to a project.'));
-  $('review-count').textContent=String(all.filter(o=>o.status==='requested').length);const percentage=all.length?Math.round(reports.length/all.length*100):0;$('report-percentage').textContent=percentage+'%';$('report-ring').style.setProperty('--report-percent',percentage+'%');
+  const unreadKnown=all.every(o=>Number.isInteger(o.unreadMessages)),unreadTotal=all.reduce((n,o)=>n+(o.unreadMessages||0),0);$('unread-count').textContent=unreadKnown?String(unreadTotal):'—';$('nav-unread-badge').textContent=String(unreadTotal);$('nav-unread-badge').hidden=!unreadTotal;const percentage=all.length?Math.round(reports.length/all.length*100):0;$('report-percentage').textContent=percentage+'%';$('report-ring').style.setProperty('--report-percent',percentage+'%');
   const breakdown=$('status-breakdown');breakdown.replaceChildren();for(const [key,label]of [['requested','Awaiting review'],['active','Accepted / in progress'],['delivered','Delivered'],['declined','Declined']]){const count=all.filter(o=>key==='active'?['accepted','in_progress','revision_requested'].includes(o.status):o.status===key).length,row=node('div','','breakdown-row');row.append(node('span',label),node('strong',String(count)));breakdown.append(row);}
  }
  function nextStep(order){
@@ -107,7 +107,7 @@
    if(['requested','accepted','in_progress','revision_requested'].includes(order.status))active++;if(order.report)delivered++;
    const isActive=['requested','accepted','in_progress','revision_requested'].includes(order.status);
    if(query&&![order.website,names[order.packageId],order.topic,order.id].join(' ').toLowerCase().includes(query))continue;
-   if(filter!=='all'&&!(filter==='active'?isActive:filter==='reports'?!!order.report:order.status===filter))continue;
+   if(filter!=='all'&&!(filter==='active'?isActive:filter==='reports'?!!order.report:filter==='unread'?order.unreadMessages>0:order.status===filter))continue;
    shown++;
    list.append(projectRow(order));
   }
@@ -187,7 +187,7 @@
   box.append(paymentBox);
   if(order.report){box.append(node('h3','Your specialist report'),node('pre',order.report,'report'));const save=button('Download report','btn');save.addEventListener('click',()=>download('zikap-report-'+order.id+'.txt',order.report));box.append(save);}
   const actionHost=node('section','','project-action-plan');actionHost.tabIndex=-1;actionHost.setAttribute('aria-label','Your SEO action plan');box.append(actionHost);mountActionPlan(actionHost,order);
-  const messageEpoch=epoch,threadHost=node('section','');box.append(threadHost);window.ZikapProjectThread.mount(threadHost,{api,path:'/orders/'+order.id+'/messages',role:'customer',alive:()=>epoch===messageEpoch&&threadHost.isConnected,onError:sessionError,makeUUID});
+  const messageEpoch=epoch,threadHost=node('section','');box.append(threadHost);window.ZikapProjectThread.mount(threadHost,{api,path:'/orders/'+order.id+'/messages',role:'customer',alive:()=>epoch===messageEpoch&&threadHost.isConnected,onError:sessionError,onUnreadChange:count=>{const current=projects.get(order.id);if(current){current.unreadMessages=count;renderProjects();}},makeUUID});
   if(order.revisionNote)box.append(node('h3','Your clarification / revision request'),node('p',order.revisionNote));
   if(order.status==='delivered'&&!order.revisionUsed){
    const form=document.createElement('form'),label=node('label','Request one clarification / revision'),note=document.createElement('textarea'),submit=node('button','Send revision request','btn ghost'),message=node('p','');label.htmlFor='revision-note';note.id='revision-note';note.required=true;note.maxLength=2000;note.placeholder='Describe what needs clarification within the original agreed scope.';submit.type='submit';message.setAttribute('role','status');form.append(label,note,submit,message);form.addEventListener('submit',async event=>{event.preventDefault();submit.disabled=true;try{await api('/orders/'+order.id+'/revision','POST',{note:note.value});await loadProjects();await openProject(order.id);}catch(e){if(!sessionError(e))message.textContent=errorText(e);submit.disabled=false;}});box.append(form);
