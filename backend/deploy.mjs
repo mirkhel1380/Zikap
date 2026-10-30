@@ -30,6 +30,8 @@ export async function deployWithRuntimeSecret({env=process.env,run=runWrangler,l
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0003_stripe_payments.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Applying the additive project action-plan schema.');
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0004_project_actions.sql','--config','./wrangler.jsonc'],undefined,childEnv);
+ log('Applying the additive project-message schema.');
+ await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0005_project_messages.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Deploying the zikap API Worker with its explicit backend configuration.');
  await run(['deploy','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Registering the existing build secret as an encrypted Worker runtime secret.');

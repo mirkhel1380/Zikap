@@ -89,8 +89,11 @@
    try{await api('/admin/orders/'+order.id,'PATCH',{status:state.value,note:note.value,report:report.value});order.status=state.value;order.owner_note=note.value;order.report=report.value;badge.textContent=states[order.status];preview.hidden=true;draftNote.textContent='Saved to the server. Your edits are available to the customer with their receipt.';status.textContent='Saved. The customer can see this update with their receipt.';filterOrders();}
    catch(err){status.textContent=err.message;}finally{save.disabled=false;remove.disabled=false;}
   });
-  remove.addEventListener('click',async()=>{if(!confirm('Permanently delete this project request and report?'))return;remove.disabled=true;try{await api('/admin/orders/'+order.id,'DELETE');loaded.delete(order.id);box.remove();filterOrders();}catch(err){status.textContent=err.message;remove.disabled=false;}});
-  box.append(form);loaded.set(order.id,{order,box});$('owner-orders').append(box);
+  remove.addEventListener('click',async()=>{if(!confirm('Permanently delete this project request, report, saved actions and messages?'))return;remove.disabled=true;try{await api('/admin/orders/'+order.id,'DELETE');loaded.delete(order.id);box.remove();filterOrders();}catch(err){status.textContent=err.message;remove.disabled=false;}});
+  const threadDetails=node('details','','owner-thread'),threadHost=node('section',''),threadSession=session;let mounted=false;
+  threadDetails.append(node('summary','Project messages'),node('p','Account customers can ask questions here. Replies stay with this project; no email is sent. This conversation does not consume the included formal revision.','tiny'),threadHost);
+  threadDetails.addEventListener('toggle',()=>{if(threadDetails.open&&!mounted){mounted=true;window.ZikapProjectThread.mount(threadHost,{api,path:'/admin/orders/'+order.id+'/messages',role:'owner',alive:()=>threadSession===session&&threadHost.isConnected});}});
+  box.append(form,threadDetails);loaded.set(order.id,{order,box});$('owner-orders').append(box);
  }
  async function load(more=false){
   const requestSession=session;
