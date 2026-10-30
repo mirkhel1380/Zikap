@@ -21,7 +21,7 @@ GitHub Pages deploys main / (root). All internal paths are relative and support 
 
 Paste/upload HTML (up to 2 MB), run 10 heuristic checks, and download a text report. HTML stays in an inert template and is not inserted into the live page. Scores are not Google scores. No live URL fetch, crawl, indexing check, keyword-volume API, speed measurements, or backlink database is connected.
 
-The project brief downloads locally; no inquiry is submitted and no payment is taken. Scoped service descriptions are not claims of automated features or guaranteed outcomes.
+The home-page project brief downloads locally; the separate workspace form submits project requests to the API. No payment is taken. Scoped service descriptions are not claims of automated features or guaranteed outcomes.
 
 ## Editorial research
 
@@ -45,7 +45,7 @@ reports.html includes three explicitly fictional previews and downloadable plain
 
 `workspace.html` combines the working free HTML report, specialist-package intake UI, private receipt tracking, and report/revision delivery UI. Package buttons and the main navigation now lead here. `owner.html` is the owner delivery desk; it always requires server-side bearer authentication.
 
-The companion API source, D1 schema and integration tests are in `backend/`. The API address is configured as `https://zikap.m-mirkhel20.workers.dev`. The deployed `/health` check now returns `ready:true`; the runtime secret, database binding, and both tables are available. The public workspace enables project submission and tracking. Persistent production order creation and owner delivery still need the production smoke test in `backend/README.md`. Payments and live URL audits are not implemented; the instant checker uses HTML supplied by the customer.
+The companion API source, D1 schema and integration tests are in `backend/`. The API address is configured as `https://zikap.m-mirkhel20.workers.dev`. The deployed `/health` check now returns `ready:true`; the runtime secret, database binding, and both tables are available. The public workspace enables project submission and tracking. Production test requests have been stored and retrieved successfully with their private receipts. The owner has confirmed saving a test report through the delivery desk. Customer-side retrieval of that delivered production report and the production revision flow remain unverified; see `backend/README.md`. Payments and live URL audits are not implemented; the instant checker uses HTML supplied by the customer.
 
 ## Free tools
 
@@ -55,4 +55,8 @@ The companion API source, D1 schema and integration tests are in `backend/`. The
 
 The free `content-planner.html` schedules 4/8/12 user-provided topics across 30 days, provides editable briefs and manual workflow statuses, and exports CSV/text. No account, AI generation, live research, auto-publishing, analytics connection, or backend is required. Plans remain in memory until the customer explicitly saves a snapshot in this browser or downloads an editable JSON backup. Restore and file import validate and reconstruct a whitelisted plan shape; imports never execute markup or code. CSV and text remain available. `content-strategy.html` explains research, evidence, review, AI-search basics, manual publishing and current service scope.
 
-The workspace also supports saved receipt import and network recovery receipts. The backend prevents duplicate creation when a client retries the same request ID/key, and owner pagination handles tied timestamps. These server features have been tested locally; the production API has passed readiness and the public form is enabled. The persistent production order lifecycle has not yet been verified.
+The workspace also supports saved receipt import and network recovery receipts. The backend prevents duplicate creation when a client retries the same request ID/key, and owner pagination handles tied timestamps. These server features have been tested locally; the production API has passed readiness and the public form is enabled. Production request creation and private receipt lookup were verified on 2026-10-30. The full production delivery/revision lifecycle remains incomplete.
+
+## Receipt usability
+
+After a successful request, the intake fields collapse and the private receipt receives focus. Customers can download it or check the project directly, without copying credentials. Tracking repeats the receipt download and return controls while that receipt is in page memory. Keys are masked by default, can be revealed explicitly, and are never placed in URLs or browser storage. A failed response offers a clearly unconfirmed recovery receipt using the same request ID/key. The tracking help explains downloads, separate tabs, the difference from owner authentication, and the lack of lost-key recovery.
