@@ -1,6 +1,6 @@
 # Zikap project requests and delivery
 
-This companion Cloudflare Worker keeps the public website on GitHub Pages. It is deployed as Worker `zikap` at `https://zikap.m-mirkhel20.workers.dev`, and `../api-config.js` points to it. The deployed `/health` now returns `ready:true` with `adminSecretStatus:"configured"`; the database binding and both tables also pass. The public form enables requests and tracking. The production smoke test involving persistent order creation and owner delivery is still outstanding. The public workspace disables submission until a configured API passes its readiness check. Do not announce online orders as active until the complete production smoke test below passes.
+This companion Cloudflare Worker keeps the public website on GitHub Pages. It is deployed as Worker `zikap` at `https://zikap.m-mirkhel20.workers.dev`, and `../api-config.js` points to it. The deployed `/health` now returns `ready:true` with `adminSecretStatus:"configured"`; the database binding and both tables also pass. The public form enables requests and tracking. Production test request creation and private receipt lookup were verified on 2026-10-30. The owner reported successfully saving a test report. Customer-side retrieval of that delivered production report and the production revision flow remain unverified. The public workspace disables submission until a configured API passes its readiness check. Do not announce online orders as active until the complete production smoke test below passes.
 
 ## What works without a server
 
@@ -47,7 +47,7 @@ For the Cloudflare runtime: `npx wrangler d1 migrations apply zikap-orders --loc
 
 ## Operating the service
 
-Monitor the delivery desk regularly; no automated notifications are sent. Requests contain names, emails, websites and project goals: only collect what is needed, keep owner access restricted, and delete records when no longer required. Receipt keys are shown once after submission and never stored by the app in browser storage. Lost keys have no automated recovery in this version. Customers must save their receipt. A separate specialist workflow, acceptance/timeline agreement and a legitimate payment method are needed before taking paid work; this code does not perform research on the owner's behalf.
+Monitor the delivery desk regularly; no automated notifications are sent. Requests contain names, emails, websites and project goals: only collect what is needed, keep owner access restricted, and delete records when no longer required. Receipt keys are issued after submission and never stored by the app in browser storage. Lost keys have no automated recovery in this version. Customers must save their receipt. A separate specialist workflow, acceptance/timeline agreement and a legitimate payment method are needed before taking paid work; this code does not perform research on the owner's behalf.
 
 Production traces are disabled in the sample Wrangler configuration; never add logging of request bodies, keys or reports. D1 rows are authoritative; screenshots or local browser state are not order confirmation.
 
@@ -62,3 +62,11 @@ Integration checks include retry deduplication and tied-timestamp pagination. A 
 Build environment variables are not Worker runtime bindings. With root directory `backend`, set the Cloudflare Builds deploy command to `npm run deploy`. Keep the existing encrypted `ADMIN_TOKEN` build secret. The deployment script checks its minimum length before starting, deploys the API using `./wrangler.jsonc`, then passes the single secret as JSON over stdin to `wrangler secret bulk`. The owner key is not put in command arguments, the child environment, Git-tracked files, or application output; Wrangler output is suppressed for these deployment steps. The build token still needs permission to deploy this Worker and edit its secrets. A failed secret upload fails the deployment script rather than claiming readiness.
 
 The value is reused exactly; it does not need to be regenerated. Once the deployment completes, check `/health` for `adminSecretStatus: "configured"` and `ready: true`. Local manual deployments that already configured runtime secrets can use `npm run deploy:worker`. Automated deployment tests use fixture secrets only and never contact Cloudflare.
+
+## Current verification status (2026-10-30)
+
+- Production health, request creation and receipt-authenticated lookup passed using clearly marked system-test orders with example.com and no payment.
+- The owner reported successful production authentication and saving a test delivery. The agent has not verified retrieval of that delivered report with the original receipt.
+- Delivered-report viewing, download and the revision flow have passed local end-to-end QA; their complete production path remains outstanding.
+- Receipt usability now provides focused confirmation, masked keys, direct tracking and repeated download controls. No persistent browser storage or automatic email recovery was added.
+- Payments, automatic email, live crawling, SEO-data integrations and automated fulfillment remain unimplemented. Human service fulfillment is still required.
