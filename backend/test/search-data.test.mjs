@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {parseSearchCSV,summarize,exportSearchCSV} from '../account-static/account/search-data.mjs';
+const header='Top queries,Clicks,Impressions,CTR,Position\n';
+test('quoted labels and thousands are parsed; CTR is computed from counts',()=>{const data=parseSearchCSV('\uFEFF'+header+'"gardens, small",10,"1,000",99%,12.5\r\n"tools ""free""",20,500,4%,5');assert.equal(data.dimension,'Queries');assert.equal(data.rows[0].label,'gardens, small');assert.equal(data.rows[1].label,'tools "free"');assert.equal(data.rows[0].ctr,1);assert.deepEqual(summarize(data.rows),{clicks:30,impressions:1500,ctr:2,position:10});});
+test('Pages and zero impression rows are handled without invented position',()=>{const data=parseSearchCSV('Top pages,Clicks,Impressions,Position\nhttps://example.com/,0,0,0');assert.equal(data.dimension,'Pages');assert.equal(summarize(data.rows).position,null);});
+test('malformed files, comparison schemas and duplicates fail closed',()=>{for(const data of [header+'"unfinished,1,10,10%,2',header+'a,1,10,10%,2\na,2,20,10%,3','Query,Last clicks,Impressions,Position\na,1,10,1',header+'a,1,10,10%,1,extra',header+'"a"bad,1,10,10%,1',header+'a,1,10,10%'])assert.throws(()=>parseSearchCSV(data));});
+test('invalid metrics cannot silently corrupt summaries',()=>{for(const row of ['a,-1,10,0%,1','a,2,1,0%,1','a,1K,1000,0%,1','a,1,10,0%,Infinity','a,0,0,0%,2','a,1,10,0%,1001'])assert.throws(()=>parseSearchCSV(header+row));});
+test('file and row limits are enforced',()=>{assert.throws(()=>parseSearchCSV('x'.repeat(1000001)));assert.throws(()=>parseSearchCSV(header+Array.from({length:5001},(_,i)=>'q'+i+',1,10,10%,2').join('\n')));});
+test('export neutralizes formula prefixes and escapes CSV labels',()=>{const result=exportSearchCSV([{label:'  =HYPERLINK("x")',clicks:1,impressions:10,ctr:10,position:2}],'Queries');assert.match(result,/"'  =HYPERLINK\(""x""\)"/);assert.match(result,/"10\.00"/);});
