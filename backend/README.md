@@ -121,3 +121,12 @@ Migration `0006_message_reads.sql` adds one role-specific record per acknowledge
 - Acknowledgement inserts are idempotent. Unknown IDs, another project's messages, duplicates, over-limit lists and the caller's own outgoing message IDs are rejected. New or unloaded messages retain their state. The response includes the current project unread count.
 
 `project-thread.js` sends explicit read acknowledgements for loaded incoming messages in bounded batches; partial progress remains accurately reflected if a later batch fails. It never infers that a message was read simply because a hidden section was loaded. Customer and owner callbacks update only their own displayed counts, without changing reports, order statuses, payment state or revision usage. Fifty-five tests pass, including role isolation, refresh semantics, concurrent arrivals, idempotency, schema compatibility and existing workflows.
+
+
+## Searchable report library and print reader
+
+The customer report library searches loaded reports by website, topic, package name or project ID, filters by package, and sorts by project update time or website. Counts explicitly refer to loaded projects. Load older projects is available in the report view and uses the existing authenticated pagination. Report metadata labels the order's update time as Project updated, not a report delivery timestamp.
+
+Read report opens an accessible native dialog with the saved plain-text report and project metadata. Text is rendered using textContent, including any markup-like report content; no report HTML is executed. Download text preserves the original report. Print / Save PDF invokes the browser print dialog; PDF saving depends on browser support. Print styling includes only the report document, with no workspace, messages, recovery codes or account email. Closing the reader, Escape and account clearing remove the report DOM and download handler. No new API, migration, external PDF service, tracking or browser storage is introduced.
+
+All 55 existing automated tests pass. Static syntax, IDs/labels and deployment bundle checks passed. Browser QA was attempted twice but the browser connection timed out; responsive appearance, focus behavior and actual print/PDF output remain unverified. The temporary fixture preview was removed and never published.
