@@ -4,7 +4,7 @@
  const names={audit:'Technical SEO Starter',keywords:'Keyword Research Starter',onpage:'On-page SEO Starter',bundle:'SEO Starter Bundle'};
  const scopes={audit:'$29 USD · One website, up to 5 public URLs. A prioritized technical findings report and action checklist.',keywords:'$19 USD · 25 curated keyword ideas for one topic, language and market; mapped to up to 5 pages. No live volume or difficulty data.',onpage:'$39 USD · Proposed metadata, content and internal-link improvements for up to 3 existing pages. No publishing or full article writing.',bundle:'$79 USD · Technical review of up to 5 URLs, 25 keyword ideas with a page map, and on-page briefs for up to 3 pages on the same website.'};
  const states={requested:'Request received',accepted:'Accepted',in_progress:'In progress',delivered:'Report delivered',revision_requested:'Revision requested',declined:'Declined'};
- let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='',paymentTestMode=null;
+ let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='',paymentTestMode=null,detailVersion=0;
  const projects=new Map();
  const makeUUID=()=>{if(typeof crypto.randomUUID==='function')return crypto.randomUUID();const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);};
  const node=(tag,value,cls)=>{const n=document.createElement(tag);n.textContent=value;if(cls)n.className=cls;return n;};
@@ -22,8 +22,8 @@
   $('show-login').setAttribute('aria-pressed',String(mode==='login'));$('show-register').setAttribute('aria-pressed',String(mode==='register'));
  }
  function clearAccount(message){
-  user=null;epoch++;listVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
-  $('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
+  user=null;epoch++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
+  $('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
   document.querySelectorAll('input[type=password]').forEach(input=>{input.value='';});$('app-status').textContent=message;authMode('login');
  }
  function sessionError(e){if(e.status===401){clearAccount('Your session ended. Sign in to continue.');return true;}return false;}
@@ -57,14 +57,29 @@
  $('download-recovery').addEventListener('click',()=>{if(!recoveryCode)return;download('zikap-account-recovery.txt','Zikap account recovery\nEmail: '+user.email+'\nRecovery code: '+recoveryCode+'\nSign in: https://zikap.m-mirkhel20.workers.dev/account/\n\nKeep this file private. This code can replace your password. Only the latest code works.');$('recovery-message').textContent='Download requested. Check your browser downloads and keep the file private.';});
  $('recovery-saved').addEventListener('change',()=>{$('close-recovery').disabled=!$('recovery-saved').checked;});
  $('close-recovery').addEventListener('click',()=>{if(!$('recovery-saved').checked)return;recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('projects').scrollIntoView({block:'start'});});
+ function nextStep(order){
+  if(order.status==='requested')return 'We will review your website and confirm scope and timing. Check this project for an update.';
+  if(order.status==='accepted')return order.payment?.available&&!['paid','partially_refunded','refunded'].includes(order.payment.status)?'Review the agreed scope and timing, then use the payment section below.':'Your request is accepted. Check the latest update for agreed timing and the next arrangement.';
+  if(order.status==='in_progress')return 'Your specialist review is in progress. Check the latest update for timing and any questions.';
+  if(order.status==='revision_requested')return 'Your clarification request is with the specialist. The current report remains available while you wait for an update.';
+  if(order.status==='delivered')return order.revisionUsed?'Read the latest report and update. Your included clarification has already been requested.':'Read and download your report. You can request one clarification within the original agreed scope.';
+  return 'Read the latest update for the reason this request was declined. A different scope needs a new request.';
+ }
  function renderProjects(){
-  const list=$('project-list');list.replaceChildren();let active=0,delivered=0;
+  const list=$('project-list');list.replaceChildren();let active=0,delivered=0,shown=0;const query=$('project-search').value.trim().toLowerCase(),filter=$('project-filter').value;
   for(const order of projects.values()){
    if(['requested','accepted','in_progress','revision_requested'].includes(order.status))active++;if(order.report)delivered++;
+   const isActive=['requested','accepted','in_progress','revision_requested'].includes(order.status);
+   if(query&&![order.website,names[order.packageId],order.topic,order.id].join(' ').toLowerCase().includes(query))continue;
+   if(filter!=='all'&&!(filter==='active'?isActive:filter==='reports'?!!order.report:order.status===filter))continue;
+   shown++;
    const card=node('article','','project-card');card.append(node('span',states[order.status]||order.status,'status'),node('h3',names[order.packageId]||order.packageId),node('p',order.website),node('p','Requested '+new Date(order.createdAt).toLocaleDateString()+' · $'+order.price+' USD'));
+   card.append(node('p',nextStep(order),'card-next'));
    const open=button('View project & report');open.addEventListener('click',()=>openProject(order.id));card.append(open);list.append(card);
   }
   if(!projects.size)list.append(node('p','No projects yet. Request a package below or link an earlier receipt.','empty'));
+  if(projects.size&&!shown)list.append(node('p','No loaded projects match these filters. Clear filters or load older projects.','empty'));
+  $('project-results').textContent='Showing '+shown+' of '+projects.size+' loaded projects'+(cursor?'. Older projects are available below.':'.');
   $('project-count').textContent=String(projects.size);$('active-count').textContent=String(active);$('report-count').textContent=String(delivered);$('more-projects').hidden=!cursor;
  }
  async function loadProjects(more=false){
@@ -73,9 +88,15 @@
   catch(e){if(currentEpoch===epoch&&!sessionError(e))$('projects-message').textContent=errorText(e);}
   finally{if(currentEpoch===epoch){$('refresh-projects').disabled=false;$('more-projects').disabled=false;}}
  }
+ $('project-search').addEventListener('input',renderProjects);$('project-filter').addEventListener('change',renderProjects);$('clear-project-filters').addEventListener('click',()=>{$('project-search').value='';$('project-filter').value='all';renderProjects();$('project-search').focus();});
  $('refresh-projects').addEventListener('click',()=>loadProjects());$('more-projects').addEventListener('click',()=>loadProjects(true));
  function detail(order){
   const box=$('project-detail');box.replaceChildren(node('span',states[order.status]||order.status,'status'),node('h2',names[order.packageId]||order.packageId),node('p','Order '+order.id,'tiny'),node('p','Last updated '+new Date(order.updatedAt).toLocaleString(),'tiny'));
+  const controls=node('div','','actions'),refresh=button('Refresh this project'),saveBrief=button('Download request summary'),close=button('Close project');
+  refresh.addEventListener('click',()=>openProject(order.id));close.addEventListener('click',()=>{detailVersion++;box.hidden=true;box.replaceChildren();$('refresh-projects').focus();});
+  saveBrief.addEventListener('click',()=>download('zikap-request-'+order.id+'.txt',['Zikap project request','Order ID: '+order.id,'Package: '+names[order.packageId],'Price: $'+order.price+' USD','Current status: '+(states[order.status]||order.status),'Updated: '+order.updatedAt,'Website: '+order.website,'Scope: '+scopes[order.packageId],'Pages: '+(order.pages||[]).join('\n'),'Topic: '+(order.topic||'Not supplied'),'Language: '+order.language,'Market: '+order.market,'Your goals: '+order.goals,'Latest update: '+(order.note||'No specialist update yet.'),'Next step: '+nextStep(order),'This is a request summary, not a payment receipt.'].join('\n\n')));
+  controls.append(refresh,saveBrief,close);box.append(controls);
+  const next=node('section','','next-step');next.append(node('span','YOUR NEXT STEP','eyebrow'),node('p',nextStep(order)));box.append(next);
   const info=node('dl','');for(const [title,value] of [['Website',order.website],['Scope',scopes[order.packageId]||''],['Pages',(order.pages||[]).join('\n')||'No pages supplied'],['Topic',order.topic||'Not supplied'],['Language',order.language],['Market',order.market],['Your goals',order.goals]]){info.append(node('dt',title),node('dd',value||''));}box.append(info);
   box.append(node('h3','Latest project update'),node('p',order.note||'Your request awaits review. Acceptance, scope and timing still need agreement. Submitting a request does not charge you.'));
   const payment=order.payment||{available:false,status:'unpaid'},paymentBox=node('section','','payment-panel');paymentBox.append(node('h3','Payment'));
@@ -102,7 +123,7 @@
   }else if(order.revisionUsed)box.append(node('p','Your one scoped clarification/revision has been requested. Follow its update here.','tiny'));
   box.hidden=false;reveal(box);
  }
- async function openProject(id){const currentEpoch=epoch;$('projects-message').textContent='Opening project…';try{const data=await api('/orders/'+id);if(currentEpoch!==epoch)return;projects.set(id,data.order);renderProjects();detail(data.order);$('projects-message').textContent='Project loaded.';}catch(e){if(currentEpoch===epoch&&!sessionError(e))$('projects-message').textContent=errorText(e);}}
+ async function openProject(id){const currentEpoch=epoch,version=++detailVersion;$('projects-message').textContent='Opening project…';try{const data=await api('/orders/'+id);if(currentEpoch!==epoch||version!==detailVersion)return;projects.set(id,data.order);renderProjects();detail(data.order);$('projects-message').textContent='Project loaded.';}catch(e){if(currentEpoch===epoch&&version===detailVersion&&!sessionError(e))$('projects-message').textContent=errorText(e);}}
  $('project-form').addEventListener('submit',async event=>{
   event.preventDefault();const submit=event.currentTarget.querySelector('button[type=submit]'),currentEpoch=epoch;submit.disabled=true;$('project-message').textContent='Submitting your request…';
   const body={packageId:$('project-package').value,website:$('project-website').value,pages:$('project-pages').value,topic:$('project-topic').value,language:$('project-language').value,market:$('project-market').value,goals:$('project-goals').value,consent:$('project-consent').checked,company:''},fingerprint=JSON.stringify(body);

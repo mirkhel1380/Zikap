@@ -74,3 +74,7 @@ The remote additive account schema and `/health` flag `customerAccounts:true` we
 ## Stripe checkout
 
 Accepted account projects can use one-time Stripe-hosted card checkout after the merchant configures STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET. Until then, no checkout is enabled. Server-controlled amounts, ownership checks, persisted idempotency, webhook signature verification, payment-status reconciliation, test/live labels and monotonic refund updates are implemented. Payment and specialist fulfillment remain separate. Financially linked orders are retained. The owner desk shows Stripe status and can reload saved requests. Thirty-two automated checks pass; browser UI verification used isolated fictional Stripe responses. No merchant test/live charge has been performed. Follow backend/STRIPE_SETUP.md; never paste secret values in chat or commit them.
+
+## Customer project navigation
+
+The customer dashboard filters loaded projects by website, package, topic or order ID and by current status or report availability. Counts remain explicitly limited to loaded records. Each card and detail view explains the next step using the current project state; no historical milestones or delivery dates are invented. Customers can refresh or close a selected project and download a plain-text request summary, clearly distinguished from a payment receipt. The detail request sequence prevents an older response from replacing a more recently selected or closed project. Browser checks use isolated fictional projects; no new production orders or payments were created.
