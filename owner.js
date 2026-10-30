@@ -45,6 +45,8 @@
   const p=packages[order.package_id],box=node('article','','owner-order'),prefix='o-'+order.id;
   const head=node('div','','owner-order-heading'),badge=node('span',states[order.status]||order.status,'delivery-status');
   head.append(node('h2',p?p.title:order.package_id),badge);box.append(head,node('p',order.name+' · '+order.email),node('p',order.website),node('p','Order: '+order.id+' · Received: '+order.created_at,'tiny'));
+  const payment=order.payment;
+  if(payment){const labels={unpaid:'No Stripe payment recorded',pending:'Stripe checkout pending',paid:'Stripe payment confirmed',partially_refunded:'Partially refunded in Stripe',refunded:'Refunded in Stripe'};box.append(node('p',(labels[payment.status]||payment.status)+(payment.testMode?' / TEST MODE — no real charge':'')+(payment.amountCents?' · $'+(payment.amountCents/100).toFixed(2)+' USD':''),'availability'));}
   const brief=node('details','','owner-brief');brief.open=true;brief.append(node('summary','Customer brief'),node('pre','Page URLs: '+order.pages+'\nTopic: '+order.topic+'\nLanguage: '+order.language+'\nMarket: '+order.market+'\nGoals: '+order.goals));
   if(order.revision_note)brief.append(node('p','Customer revision request: '+order.revision_note,'owner-revision'));box.append(brief);
   if(p){
@@ -94,15 +96,17 @@
   const requestSession=session;
   if(!base){$('owner-status').textContent='The order server has not been connected yet.';return;}
   $('owner-login').querySelector('button[type=submit]').disabled=true;$('owner-more').disabled=true;
+  $('owner-refresh').disabled=true;
   try{
    if(!more){$('owner-orders').replaceChildren();loaded.clear();cursor=null;$('owner-desk').hidden=true;$('owner-more').hidden=true;}
    $('owner-status').textContent='Loading…';const data=await api('/admin/orders'+(cursor?'?before='+encodeURIComponent(cursor):''));
    if(requestSession!==session)return;
    data.orders.forEach(order=>{if(!loaded.has(order.id))render(order);});cursor=data.next;$('owner-more').hidden=!cursor;$('owner-desk').hidden=false;
    filterOrders();$('owner-status').textContent=loaded.size+' request(s) loaded. Totals cover loaded requests only.';
-  }catch(e){if(requestSession===session)$('owner-status').textContent=e.message;}finally{if(requestSession===session){$('owner-login').querySelector('button[type=submit]').disabled=false;$('owner-more').disabled=false;}}
+  }catch(e){if(requestSession===session)$('owner-status').textContent=e.message;}finally{if(requestSession===session){$('owner-login').querySelector('button[type=submit]').disabled=false;$('owner-more').disabled=false;$('owner-refresh').disabled=false;}}
  }
  $('owner-login').addEventListener('submit',e=>{e.preventDefault();session++;key=$('owner-key').value;$('owner-key').value='';load();});
  $('owner-more').addEventListener('click',()=>load(true));$('owner-search').addEventListener('input',filterOrders);$('owner-filter').addEventListener('change',filterOrders);
+ $('owner-refresh').addEventListener('click',()=>{if(confirm('Reload saved requests and discard unsaved page drafts?'))load();});
  $('owner-lock').addEventListener('click',()=>{session++;key='';cursor=null;loaded.clear();$('owner-key').value='';$('owner-orders').replaceChildren();$('owner-more').hidden=true;$('owner-more').disabled=false;$('owner-login').querySelector('button[type=submit]').disabled=false;$('owner-desk').hidden=true;$('owner-search').value='';$('owner-filter').value='';$('owner-status').textContent='Desk locked. Unsaved page drafts have been cleared.';});
 })();

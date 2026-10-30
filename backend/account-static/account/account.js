@@ -4,7 +4,7 @@
  const names={audit:'Technical SEO Starter',keywords:'Keyword Research Starter',onpage:'On-page SEO Starter',bundle:'SEO Starter Bundle'};
  const scopes={audit:'$29 USD · One website, up to 5 public URLs. A prioritized technical findings report and action checklist.',keywords:'$19 USD · 25 curated keyword ideas for one topic, language and market; mapped to up to 5 pages. No live volume or difficulty data.',onpage:'$39 USD · Proposed metadata, content and internal-link improvements for up to 3 existing pages. No publishing or full article writing.',bundle:'$79 USD · Technical review of up to 5 URLs, 25 keyword ideas with a page map, and on-page briefs for up to 3 pages on the same website.'};
  const states={requested:'Request received',accepted:'Accepted',in_progress:'In progress',delivered:'Report delivered',revision_requested:'Revision requested',declined:'Declined'};
- let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='';
+ let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='',paymentTestMode=null;
  const projects=new Map();
  const makeUUID=()=>{if(typeof crypto.randomUUID==='function')return crypto.randomUUID();const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);};
  const node=(tag,value,cls)=>{const n=document.createElement(tag);n.textContent=value;if(cls)n.className=cls;return n;};
@@ -34,6 +34,9 @@
   user=data.user;epoch++;pending=null;$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
   $('greeting').textContent='Welcome, '+user.name.split(/\s+/)[0]+'.';$('profile-line').textContent=user.name+' · '+user.email;
   if(data.recoveryKey)showRecovery(data.recoveryKey);await loadProjects();
+  const params=new URLSearchParams(location.search),id=params.get('order');
+  if(params.get('payment')==='return'&&/^[a-f0-9-]{36}$/.test(id||'')){try{await api('/orders/'+id+'/payment-status','POST',{});await loadProjects();await openProject(id);}catch(e){$('projects-message').textContent='Check your project payment status. '+errorText(e);}}
+  if(params.get('payment')==='cancel')$('projects-message').textContent='Checkout was closed. Open your project to check its current payment status.';
  }
  function scope(){const value=$('project-package').value;$('package-scope').textContent=scopes[value];$('project-page-limit').textContent=value==='onpage'?'(up to 3)':'(up to 5)';$('project-pages').required=value!=='keywords';$('project-topic').required=['keywords','bundle'].includes(value);}
  const initialPackage=new URLSearchParams(location.search).get('package');if(Object.hasOwn(names,initialPackage))$('project-package').value=initialPackage;scope();$('project-package').addEventListener('change',scope);
@@ -74,7 +77,24 @@
  function detail(order){
   const box=$('project-detail');box.replaceChildren(node('span',states[order.status]||order.status,'status'),node('h2',names[order.packageId]||order.packageId),node('p','Order '+order.id,'tiny'),node('p','Last updated '+new Date(order.updatedAt).toLocaleString(),'tiny'));
   const info=node('dl','');for(const [title,value] of [['Website',order.website],['Scope',scopes[order.packageId]||''],['Pages',(order.pages||[]).join('\n')||'No pages supplied'],['Topic',order.topic||'Not supplied'],['Language',order.language],['Market',order.market],['Your goals',order.goals]]){info.append(node('dt',title),node('dd',value||''));}box.append(info);
-  box.append(node('h3','Latest project update'),node('p',order.note||'Your request awaits review. Acceptance, scope and timing still need agreement. No payment was collected.'));
+  box.append(node('h3','Latest project update'),node('p',order.note||'Your request awaits review. Acceptance, scope and timing still need agreement. Submitting a request does not charge you.'));
+  const payment=order.payment||{available:false,status:'unpaid'},paymentBox=node('section','','payment-panel');paymentBox.append(node('h3','Payment'));
+  const paidLabels={paid:'Payment confirmed',partially_refunded:'Partially refunded',refunded:'Refunded'};
+  if(paidLabels[payment.status])paymentBox.append(node('p',paidLabels[payment.status]+(payment.testMode?' (Stripe test mode; no real charge)':'')));
+  else if(!payment.available)paymentBox.append(node('p','Online checkout is not enabled yet. Sending a project request does not charge you.'));
+  else if(order.status!=='accepted')paymentBox.append(node('p','Stripe checkout opens after your project is accepted and the scope and timing are confirmed.'));
+  else{
+   paymentBox.append(node('p',(payment.status==='pending'?'An existing checkout is pending. ':'')+'One-time payment: $'+order.price+' USD. Card details are entered on Stripe’s hosted checkout page.'));
+   if(payment.testMode===true||paymentTestMode===true)paymentBox.append(node('p','TEST MODE / No real payment will be collected.','note'));
+   const label=node('label','','check'),check=document.createElement('input');check.type='checkbox';check.id='pay-confirm-'+order.id;label.htmlFor=check.id;label.append(check,node('span','I confirm the package scope and the $'+order.price+' USD amount.'));
+   const pay=button('Continue to Stripe checkout','btn'),message=node('p','');pay.disabled=true;message.setAttribute('role','status');check.addEventListener('change',()=>{pay.disabled=!check.checked;});
+   pay.addEventListener('click',async()=>{if(!check.checked)return;pay.disabled=true;message.textContent='Preparing your secure checkout…';try{const result=await api('/orders/'+order.id+'/checkout','POST',{acknowledged:true});if(result.url){const url=new URL(result.url);if(url.protocol!=='https:'||url.hostname!=='checkout.stripe.com')throw new Error('The checkout page could not be verified.');location.assign(url.href);}else await openProject(order.id);}catch(e){if(!sessionError(e))message.textContent=errorText(e);pay.disabled=!check.checked;}});
+   paymentBox.append(label,pay,message);
+  }
+  if(payment.status==='pending'){
+   const confirm=button('Check Stripe payment status'),message=node('p','');message.setAttribute('role','status');confirm.addEventListener('click',async()=>{confirm.disabled=true;message.textContent='Checking Stripe…';try{await api('/orders/'+order.id+'/payment-status','POST',{});await loadProjects();await openProject(order.id);}catch(e){if(!sessionError(e))message.textContent=errorText(e);confirm.disabled=false;}});paymentBox.append(confirm,message);
+  }
+  box.append(paymentBox);
   if(order.report){box.append(node('h3','Your specialist report'),node('pre',order.report,'report'));const save=button('Download report','btn');save.addEventListener('click',()=>download('zikap-report-'+order.id+'.txt',order.report));box.append(save);}
   if(order.revisionNote)box.append(node('h3','Your clarification / revision request'),node('p',order.revisionNote));
   if(order.status==='delivered'&&!order.revisionUsed){
@@ -86,7 +106,7 @@
  $('project-form').addEventListener('submit',async event=>{
   event.preventDefault();const submit=event.currentTarget.querySelector('button[type=submit]'),currentEpoch=epoch;submit.disabled=true;$('project-message').textContent='Submitting your request…';
   const body={packageId:$('project-package').value,website:$('project-website').value,pages:$('project-pages').value,topic:$('project-topic').value,language:$('project-language').value,market:$('project-market').value,goals:$('project-goals').value,consent:$('project-consent').checked,company:''},fingerprint=JSON.stringify(body);
-  try{if(!pending||pending.fingerprint!==fingerprint)pending={fingerprint,id:makeUUID()};const data=await api('/orders','POST',{...body,requestId:pending.id});if(currentEpoch!==epoch)return;pending=null;$('project-form').reset();$('project-package').value=body.packageId;scope();$('project-message').textContent='Request received and saved to your account. Check your projects for acceptance and timing. No payment was collected.';await loadProjects();if(currentEpoch===epoch)detail(data.order);}
+  try{if(!pending||pending.fingerprint!==fingerprint)pending={fingerprint,id:makeUUID()};const data=await api('/orders','POST',{...body,requestId:pending.id});if(currentEpoch!==epoch)return;pending=null;$('project-form').reset();$('project-package').value=body.packageId;scope();$('project-message').textContent='Request saved to your account. Check acceptance, timing and payment status in your project. Submitting a request does not charge you.';await loadProjects();if(currentEpoch===epoch)detail(data.order);}
   catch(e){if(currentEpoch===epoch&&!sessionError(e))$('project-message').textContent=errorText(e)+(!e.status||e.status>=500?' Submission is not confirmed. Refresh My projects before trying again. Retrying unchanged details on this page reuses the same project reference.':'');}
   finally{submit.disabled=false;}
  });
@@ -98,7 +118,7 @@
   catch(e){message.textContent=errorText(e);}finally{input.value='';if(kind==='password')$('new-password').value='';submit.disabled=false;$('logout').disabled=false;}
  });
  async function boot(){
-  try{const status=await api('/status');if(!status.ready){$('app-status').textContent='Customer accounts are being prepared. Please return shortly. The free tools remain available.';return;}try{await enter(await api('/session'));}catch(e){if(e.status===401){clearAccount('Sign in or create an account to manage your projects.');}else throw e;}}
+  try{const status=await api('/status');paymentTestMode=status.paymentTestMode;if(!status.ready){$('app-status').textContent='Customer accounts are being prepared. Please return shortly. The free tools remain available.';return;}try{await enter(await api('/session'));}catch(e){if(e.status===401){clearAccount('Sign in or create an account to manage your projects.');}else throw e;}}
   catch(e){$('app-status').textContent=errorText(e)+' Please return shortly.';}
  }
  boot();

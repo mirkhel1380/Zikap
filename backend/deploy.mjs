@@ -16,15 +16,22 @@ function runWrangler(args,input,env){
 export async function deployWithRuntimeSecret({env=process.env,run=runWrangler,log=console.log}={}){
  const secret=env.ADMIN_TOKEN;
  if(typeof secret!=='string'||secret.length<32)throw new Error('ADMIN_TOKEN must be a Cloudflare build secret containing at least 32 characters. No deployment was started.');
+ const secrets={ADMIN_TOKEN:secret};
+ for(const name of ['STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET'])if(env[name]){
+  if(typeof env[name]!=='string'||(name==='STRIPE_SECRET_KEY'?!/^(sk|rk)_(test|live)_/.test(env[name]):!env[name].startsWith('whsec_')))throw new Error(name+' is not in the expected format. No deployment was started.');
+  secrets[name]=env[name];
+ }
  const config=JSON.parse(readFileSync(resolve(directory,'wrangler.jsonc'),'utf8'));
  if(config.name!=='zikap'||config.main!=='worker.mjs'||config.assets?.binding!=='ACCOUNT_ASSETS'||config.assets?.directory!=='./account-static'||config.assets?.run_worker_first!==true)throw new Error('Expected the zikap API Worker with main worker.mjs and its account assets binding. No deployment was started.');
- const childEnv={...env};delete childEnv.ADMIN_TOKEN;
+ const childEnv={...env};for(const name of ['ADMIN_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET'])delete childEnv[name];
  log('Applying the additive customer-account schema to the existing orders database.');
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0002_customer_accounts.sql','--config','./wrangler.jsonc'],undefined,childEnv);
+ log('Applying the additive Stripe payment-record schema.');
+ await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0003_stripe_payments.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Deploying the zikap API Worker with its explicit backend configuration.');
  await run(['deploy','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Registering the existing build secret as an encrypted Worker runtime secret.');
- await run(['secret','bulk','--config','./wrangler.jsonc'],JSON.stringify({ADMIN_TOKEN:secret}),childEnv);
+ await run(['secret','bulk','--config','./wrangler.jsonc'],JSON.stringify(secrets),childEnv);
  log('Worker deployment and runtime secret registration completed.');
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

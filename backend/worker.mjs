@@ -1,6 +1,7 @@
 // Orders and delivery API. No payment processor, mail delivery, or live crawling.
 import {accountRoute,accountsReady} from './accounts.mjs';
-const prices = {audit:29,keywords:19,onpage:39,bundle:79};
+import {paymentsReady,paymentSummaries,protectOwnerChange,stripeWebhook} from './payments.mjs';
+import {prices} from './catalog.mjs';
 const states = ['requested','accepted','in_progress','delivered','declined'];
 class ApiError extends Error { constructor(message,status=400){super(message);this.status=status;} }
 const hash = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -68,9 +69,10 @@ export default {async fetch(req,env){
       }
       const ready=Object.values(checks).every(value=>value===true);
       const adminSecretStatus=typeof env.ADMIN_TOKEN!=='string'||env.ADMIN_TOKEN.length===0?'missing':env.ADMIN_TOKEN.length<32?'too_short':'configured';
-      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:false,payments:false},ready?200:503);
+      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:false,payments:ready&&await paymentsReady(env)},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
+    if(path==='/stripe/webhook'&&req.method==='POST')return respond(await stripeWebhook(req,env,ApiError));
     if(path.startsWith('/account-api/')){
       const result=await accountRoute(req,env,{ApiError,hash,text,jsonBody,rate,validateOrder,receipt});
       return respond(result.body,result.status,result.headers);
@@ -100,7 +102,7 @@ export default {async fetch(req,env){
       const row=await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(match[1]).first();
       const token=req.headers.get('authorization')?.replace(/^Bearer /,'')||'';
       if(!row||await hash(token)!==row.token_hash)throw new ApiError('Order not found or receipt key incorrect.',404);
-      if(req.method==='GET'&&!match[2])return respond(receipt(row));
+      if(req.method==='GET'&&!match[2]){const payments=await paymentSummaries(env,[row.id]),payment=payments.get(row.id);return respond({...receipt(row),payment,paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')});}
       if(req.method==='POST'&&match[2]){
         const data=await jsonBody(req),note=text(data.note,2000);
         const result=await env.DB.prepare("UPDATE orders SET revision_used=1,revision_note=?,status='revision_requested',updated_at=? WHERE id=? AND status='delivered' AND revision_used=0").bind(note,new Date().toISOString(),row.id).run();
@@ -118,18 +120,21 @@ export default {async fetch(req,env){
           result=await env.DB.prepare('SELECT * FROM orders WHERE created_at < ? OR (created_at = ? AND id < ?) ORDER BY created_at DESC, id DESC LIMIT 50').bind(parts[0],parts[0],parts[1]).all();
         }else result=await env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC, id DESC LIMIT 50').all();
         const last=result.results.at(-1);
-        return respond({orders:result.results.map(({token_hash,...row})=>row),next:result.results.length===50?last.created_at+'|'+last.id:null});
+        const payments=await paymentSummaries(env,result.results.map(row=>row.id));
+        return respond({orders:result.results.map(({token_hash,...row})=>({...row,payment:payments.get(row.id)})),next:result.results.length===50?last.created_at+'|'+last.id:null});
       }
       const id=path.match(/^\/admin\/orders\/([a-f0-9-]{36})$/)?.[1];
       if(id&&req.method==='PATCH'){
         const data=await jsonBody(req,110000),status=text(data.status,30),report=text(data.report,90000,false),note=text(data.note,2000,false);
         if(!states.includes(status))throw new ApiError('Invalid order status.');
         if(status==='delivered'&&!report)throw new ApiError('Add a report before marking delivered.');
+        await protectOwnerChange(env,id,status,ApiError);
         const result=await env.DB.prepare('UPDATE orders SET status=?,report=?,owner_note=?,updated_at=? WHERE id=?').bind(status,report,note,new Date().toISOString(),id).run();
         if(!result.meta.changes)throw new ApiError('Order not found.',404);
         return respond({updated:true});
       }
       if(id&&req.method==='DELETE'){
+        await protectOwnerChange(env,id,'delete',ApiError);
         const result=await env.DB.prepare('DELETE FROM orders WHERE id=?').bind(id).run();
         if(!result.meta.changes)throw new ApiError('Order not found.',404);
         return respond({deleted:true});

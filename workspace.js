@@ -14,11 +14,12 @@
       const order=await api('/orders/'+id,'GET',undefined,token);
       const box=element('article','', 'delivery-card');box.append(element('span',states[order.status]||order.status,'delivery-status'),element('h3','Your project update'),element('p','Website: '+order.website),element('p','Package: '+order.packageId+' · $'+order.price+' USD'),element('p','Updated: '+new Date(order.updatedAt).toLocaleString()));
       if(order.note)box.append(element('p',order.note));
+      if(order.payment){const labels={paid:'Payment confirmed',pending:'Stripe checkout pending',unpaid:'No Stripe payment recorded',partially_refunded:'Partially refunded',refunded:'Refunded'};box.append(element('p','Payment: '+(labels[order.payment.status]||order.payment.status)+(order.payment.testMode?' (test mode; no real charge)':'')));}
       if(order.report){const report=element('pre',order.report,'delivery-report'),button=element('button','Download report','btn');button.type='button';button.addEventListener('click',()=>save('zikap-report-'+id+'.txt',order.report));box.append(report,button);}
       if(order.status==='delivered'&&!order.revisionUsed){
         const form=document.createElement('form'),label=element('label','Request your one clarification / revision');label.htmlFor='revision-note';const note=document.createElement('textarea');note.id='revision-note';note.required=true;note.maxLength=2000;note.placeholder='Describe the changes within the original agreed scope.';const submit=element('button','Send revision request','btn ghost');submit.type='submit';const status=element('p','');status.setAttribute('role','status');form.append(label,note,submit,status);form.addEventListener('submit',async e=>{e.preventDefault();submit.disabled=true;try{await api('/orders/'+id+'/revision','POST',{note:note.value},token);await loadOrder();}catch(err){status.textContent=err.message;submit.disabled=false;}});box.append(form);
       }
-      $('track-result').replaceChildren(box);$('track-message').textContent='Project found. No payment has been collected through this website.';
+      $('track-result').replaceChildren(box);$('track-message').textContent='Project found. Your project and payment updates are shown below.';
     }catch(e){message('track-message',e);}
   }
   $('track-form').addEventListener('submit',event=>{event.preventDefault();loadOrder();});

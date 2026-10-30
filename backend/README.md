@@ -13,7 +13,7 @@ The existing browser-local checker runs ten heuristic checks on customer-provide
 - Owner-authenticated request list, status updates, text report delivery, and deletion.
 - Report reading/download in the customer workspace, plus one revision request after delivery.
 - Fixed-origin CORS, body limits, SQL parameter binding, no-store responses and per-IP/hour rate limits.
-- No payments, email delivery, account recovery, URL crawling, or external SEO database. No request is automatically accepted. A person must complete the promised research/recommendations and use `owner.html` to deliver the report.
+- Stripe-hosted payments are implemented but require merchant configuration (see STRIPE_SETUP.md). No email delivery, URL crawling, or external SEO database. No request is automatically accepted. A person must complete the promised research/recommendations and use `owner.html` to deliver the report.
 
 ## Connect a Cloudflare account
 
@@ -69,7 +69,7 @@ The value is reused exactly; it does not need to be regenerated. Once the deploy
 - The owner reported successful production authentication and saving a test delivery. The agent has not verified retrieval of that delivered report with the original receipt.
 - Delivered-report viewing, download and the revision flow have passed local end-to-end QA; their complete production path remains outstanding.
 - Receipt usability now provides focused confirmation, masked keys, direct tracking and repeated download controls. No persistent browser storage or automatic email recovery was added.
-- Payments, automatic email, live crawling, SEO-data integrations and automated fulfillment remain unimplemented. Human service fulfillment is still required.
+- Automatic email, live crawling, SEO-data integrations and automated fulfillment remain unimplemented. Stripe checkout is implemented but inactive until merchant secrets are configured and tested. Human service fulfillment is still required.
 
 ## Customer accounts
 
@@ -84,3 +84,9 @@ Customer flows: register; sign in/out; list/create/read owned projects; read/dow
 The Node/SQLite integration tests cover separate users, authorization, cross-site rejection, hashed credentials, first-party cookie attributes, retry deduplication, receipt attachment, owner delivery, one revision, password/code rotation, session revocation/expiry and login throttling. Local browser QA used the real Worker handler with temporary SQLite data and a synthetic fixture session to verify project creation, report delivery/download, revision, page reload and mobile layout. A local-only cookie-name adaptation was used for the HTTP preview; production cookies remain Secure and HttpOnly. No QA adapter, credential or synthetic session is shipped. Production customer registration/login still needs a user-operated smoke test after deployment.
 
 See `ACCOUNT_SECURITY.md` for the authentication boundary and current limitations.
+
+## Stripe payment records
+
+`0003_stripe_payments.sql` is additive. The deployment helper applies it after the account migration. Optional encrypted build secrets STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are transferred only over stdin to runtime; they are removed from child environments and never logged. Runtime secrets omitted from a build are preserved. `/health` reports `payments:true` only when configuration and tables are present; that does not certify a real merchant transaction. The merchant must register the webhook destination and complete test mode before live activation. See STRIPE_SETUP.md for the exact destination, events, API version and activation steps.
+
+There are 32 passing server/deployment checks, including Stripe fixtures. UI checks use fictional data. No real Stripe credentials, payment, refund or transfer were used by the agent. Refund initiation, disputes and merchant finances are handled in Stripe, not this application.
