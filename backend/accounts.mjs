@@ -1,5 +1,6 @@
 // First-party customer sessions. No email delivery or password-reset email service.
 import {paymentsReady,stripeConfigured,paymentSummaries,checkout,reconcilePayment} from './payments.mjs';
+import {actionsReady,projectActions} from './actions.mjs';
 const COOKIE='__Host-zikap_session',LIFETIME=7*24*60*60;
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const encode=new TextEncoder();
@@ -25,7 +26,7 @@ export async function accountRoute(req,env,h){
  const result=(body,status=200,headers={})=>({body,status,headers});
  const emailOf=value=>{const email=text(value,254).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new ApiError('Enter a valid email address.');return email;};
  const passwordOf=value=>{if(typeof value!=='string'||value.length<15||value.length>128)throw new ApiError('Use a password between 15 and 128 characters.');return value;};
- if(path==='/account-api/status'&&req.method==='GET')return result({ready:await accountsReady(env),emailVerification:false,payments:await paymentsReady(env),paymentTestMode:stripeConfigured(env)?!env.STRIPE_SECRET_KEY.includes('_live_'):null});
+ if(path==='/account-api/status'&&req.method==='GET')return result({ready:await accountsReady(env),emailVerification:false,actionPlans:await actionsReady(env),payments:await paymentsReady(env),paymentTestMode:stripeConfigured(env)?!env.STRIPE_SECRET_KEY.includes('_live_'):null});
  if(!await accountsReady(env))throw new ApiError('Customer accounts are being prepared. Please return shortly.',503);
  // Cookie-authenticated writes are same-origin only; CORS does not replace this check.
  if(!['GET','HEAD'].includes(req.method)&&req.headers.get('origin')!==new URL(req.url).origin)throw new ApiError('Open the account page and try again.',403);
@@ -124,6 +125,12 @@ export async function accountRoute(req,env,h){
   const owner=await env.DB.prepare('SELECT user_id FROM customer_order_links WHERE order_id=?').bind(id).first();
   if(owner?.user_id!==user.id)throw new ApiError('This project is already linked to another account.',409);
   return result({order:await accountOrder(row)});
+ }
+ const actionMatch=path.match(/^\/account-api\/orders\/([a-f0-9-]{36})\/actions(?:\/([a-f0-9-]{36}))?$/);
+ if(actionMatch){
+  await rate(req,env,'account-read',240);const row=await env.DB.prepare('SELECT o.* FROM orders o JOIN customer_order_links l ON l.order_id=o.id WHERE o.id=? AND l.user_id=?').bind(actionMatch[1],user.id).first();
+  if(!row)throw new ApiError('Project not found.',404);
+  return projectActions(req,env,row,actionMatch[2],h);
  }
  const match=path.match(/^\/account-api\/orders\/([a-f0-9-]{36})(\/revision|\/checkout|\/payment-status)?$/);
  if(match){
