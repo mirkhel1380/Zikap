@@ -1,4 +1,5 @@
 // Orders and delivery API. No payment processor, mail delivery, or live crawling.
+import {accountRoute,accountsReady} from './accounts.mjs';
 const prices = {audit:29,keywords:19,onpage:39,bundle:79};
 const states = ['requested','accepted','in_progress','delivered','declined'];
 class ApiError extends Error { constructor(message,status=400){super(message);this.status=status;} }
@@ -42,14 +43,22 @@ async function admin(req,env){
   if(await hash(token)!==await hash(env.ADMIN_TOKEN))throw new ApiError('Owner authentication required.',401);
 }
 export default {async fetch(req,env){
-  const origin=req.headers.get('origin'),allowed=env.ALLOWED_ORIGIN;
+  const origin=req.headers.get('origin'),allowed=env.ALLOWED_ORIGIN,requestOrigin=new URL(req.url).origin;
   const headers={'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Vary':'Origin'};
   if(origin===allowed){headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Methods']='GET,POST,PATCH,OPTIONS,DELETE';headers['Access-Control-Allow-Headers']='Content-Type,Authorization';}
-  const respond=(body,status=200)=>new Response(JSON.stringify(body),{status,headers});
-  if(origin&&origin!==allowed)return respond({error:'Origin not allowed.'},403);
+  const respond=(body,status=200,extra={})=>new Response(JSON.stringify(body),{status,headers:{...headers,...extra}});
+  if(origin&&origin!==allowed&&origin!==requestOrigin)return respond({error:'Origin not allowed.'},403);
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
   try{
     const path=new URL(req.url).pathname;
+    if(path==='/account'||path.startsWith('/account/')){
+      if(!['GET','HEAD'].includes(req.method))throw new ApiError('Method not allowed.',405);
+      if(!env.ACCOUNT_ASSETS)throw new ApiError('Customer accounts are being prepared. Please return shortly.',503);
+      const asset=await env.ACCOUNT_ASSETS.fetch(req),secured=new Headers(asset.headers);
+      secured.set('Cache-Control','no-store');secured.set('X-Content-Type-Options','nosniff');secured.set('Referrer-Policy','no-referrer');secured.set('X-Frame-Options','DENY');
+      secured.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'");
+      return new Response(asset.body,{status:asset.status,headers:secured});
+    }
     // Both the root and /health identify this script and report setup status without revealing secrets.
     if((path==='/'||path==='/health')&&req.method==='GET'){
       const checks={databaseBinding:!!env.DB,adminSecret:typeof env.ADMIN_TOKEN==='string'&&env.ADMIN_TOKEN.length>=32,ordersTable:null,rateLimitsTable:null};
@@ -59,9 +68,13 @@ export default {async fetch(req,env){
       }
       const ready=Object.values(checks).every(value=>value===true);
       const adminSecretStatus=typeof env.ADMIN_TOKEN!=='string'||env.ADMIN_TOKEN.length===0?'missing':env.ADMIN_TOKEN.length<32?'too_short':'configured';
-      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,automaticUrlAudit:false,payments:false},ready?200:503);
+      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:false,payments:false},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
+    if(path.startsWith('/account-api/')){
+      const result=await accountRoute(req,env,{ApiError,hash,text,jsonBody,rate,validateOrder,receipt});
+      return respond(result.body,result.status,result.headers);
+    }
     if(path==='/orders'&&req.method==='POST'){
       await rate(req,env,'create',5);
       const raw=await jsonBody(req);if(raw.consent!==true)throw new ApiError('Consent is required to store the project request.');

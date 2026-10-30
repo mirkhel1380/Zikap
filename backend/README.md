@@ -70,3 +70,17 @@ The value is reused exactly; it does not need to be regenerated. Once the deploy
 - Delivered-report viewing, download and the revision flow have passed local end-to-end QA; their complete production path remains outstanding.
 - Receipt usability now provides focused confirmation, masked keys, direct tracking and repeated download controls. No persistent browser storage or automatic email recovery was added.
 - Payments, automatic email, live crawling, SEO-data integrations and automated fulfillment remain unimplemented. Human service fulfillment is still required.
+
+## Customer accounts
+
+The Worker also serves `/account/` from the `ACCOUNT_ASSETS` binding. The account UI and `/account-api/` share an origin so a Secure, HttpOnly, SameSite=Lax `__Host-` cookie works without third-party cookies. GitHub Pages remains the marketing/free-tools host. `run_worker_first: true` preserves API routing alongside the assets; this remains a Worker with server code.
+
+The additive `0002_customer_accounts.sql` migration creates users, hashed sessions and explicit order-ownership links. It does not replace or alter existing orders. `npm run deploy` applies this idempotent SQL file to the remote D1 database before deploying, then preserves the existing runtime-secret registration flow. The build token needs D1 edit access in addition to its existing Worker permissions. If schema preparation fails, deployment stops before changing the Worker. For an existing local/manual deployment, run `npx wrangler d1 execute zikap-orders --remote --file ./migrations/0002_customer_accounts.sql --config ./wrangler.jsonc` followed by `npm run deploy:worker`.
+
+Health retains the existing order readiness checks and separately reports `customerAccounts`. `/account-api/status` reports account schema readiness. Only switch marketing links after the deployed Worker reports accounts ready and the account page loads. No new secret or email provider is required.
+
+Customer flows: register; sign in/out; list/create/read owned projects; read/download delivered reports; request one scoped revision; attach an earlier order by its original receipt; change a password; rotate a recovery code; recover access using the latest private code. Email addresses are not verified and never act as proof of ownership of an earlier order. No verification or recovery emails are sent. Recovery codes are issued once in the response and only their hashes are stored. Keep the new recovery file after registration, password change or code rotation.
+
+The Node/SQLite integration tests cover separate users, authorization, cross-site rejection, hashed credentials, first-party cookie attributes, retry deduplication, receipt attachment, owner delivery, one revision, password/code rotation, session revocation/expiry and login throttling. Local browser QA used the real Worker handler with temporary SQLite data and a synthetic fixture session to verify project creation, report delivery/download, revision, page reload and mobile layout. A local-only cookie-name adaptation was used for the HTTP preview; production cookies remain Secure and HttpOnly. No QA adapter, credential or synthetic session is shipped. Production customer registration/login still needs a user-operated smoke test after deployment.
+
+See `ACCOUNT_SECURITY.md` for the authentication boundary and current limitations.

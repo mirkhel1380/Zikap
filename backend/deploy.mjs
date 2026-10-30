@@ -9,7 +9,7 @@ function runWrangler(args,input,env){
  return new Promise((resolveRun,reject)=>{
   const child=spawn('wrangler',args,{cwd:directory,env:{...env,CI:'true'},shell:false,stdio:[input===undefined?'ignore':'pipe','ignore','ignore']});
   child.once('error',()=>reject(new Error('Could not start Wrangler. Check that build dependencies are installed.')));
-  child.once('close',code=>code===0?resolveRun():reject(new Error(args[0]==='secret'?'Runtime secret upload failed. Check the build token has permission to edit this Worker.':'Worker deployment failed. Check the Wrangler configuration and build token permissions.')));
+  child.once('close',code=>code===0?resolveRun():reject(new Error(args[0]==='secret'?'Runtime secret upload failed. Check the build token has permission to edit this Worker.':args[0]==='d1'?'Customer account schema preparation failed. Check the migration and the build token D1 permissions. The Worker was not changed.':'Worker deployment failed. Check the Wrangler configuration and build token permissions.')));
   if(input!==undefined){child.stdin.on('error',()=>{});child.stdin.end(input);}
  });
 }
@@ -17,8 +17,10 @@ export async function deployWithRuntimeSecret({env=process.env,run=runWrangler,l
  const secret=env.ADMIN_TOKEN;
  if(typeof secret!=='string'||secret.length<32)throw new Error('ADMIN_TOKEN must be a Cloudflare build secret containing at least 32 characters. No deployment was started.');
  const config=JSON.parse(readFileSync(resolve(directory,'wrangler.jsonc'),'utf8'));
- if(config.name!=='zikap'||config.main!=='worker.mjs'||config.assets)throw new Error('Expected the zikap API Worker with main worker.mjs and no static assets. No deployment was started.');
+ if(config.name!=='zikap'||config.main!=='worker.mjs'||config.assets?.binding!=='ACCOUNT_ASSETS'||config.assets?.directory!=='./account-static'||config.assets?.run_worker_first!==true)throw new Error('Expected the zikap API Worker with main worker.mjs and its account assets binding. No deployment was started.');
  const childEnv={...env};delete childEnv.ADMIN_TOKEN;
+ log('Applying the additive customer-account schema to the existing orders database.');
+ await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0002_customer_accounts.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Deploying the zikap API Worker with its explicit backend configuration.');
  await run(['deploy','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Registering the existing build secret as an encrypted Worker runtime secret.');
