@@ -156,3 +156,13 @@ Optional recommendations cite matching finding IDs and use the existing server c
 85 automated tests pass, including 12 scanner tests with native HTML parsing, safe destinations, robots rules, response limits, verification pages, recommendation matching and quotas. Desktop and 375px mobile browser checks passed using isolated fictional page responses, including findings, clean results and package handoff URLs. Production deployment verification is separate from those fixture checks. See `backend/WEBSITE_CHECK.md` for limits and deployment requirements.
 
 Production verification on 2026-10-31: GitHub Pages and Cloudflare Builds completed successfully. The deployed public form fetched the actual Zikap site and analyzed three pages. It returned two context-dependent duplicate-title observations and no paid recommendation. No test order, customer account, message or payment was created. A browser download-event check timed out, so the actual exported file remains unverified; the control and generated text path were inspected.
+
+## Approved navy and blue design
+
+The public site now uses navy navigation and footer, blue actions, white cards and a cool off-white background. The original `assets/zikap-logo.svg` and `assets/logo-mark.svg` are unchanged. An opaque white header/footer logo plate preserves the original green symbol and wordmark against the dark background. `blue-theme.css` follows the shared component styles.
+
+All fifteen public navigation headers share Services, Free tools, Resources, Pricing and How it works, with My account as the right-side action. The services mega menu groups actual services and links to the free public URL check. Existing desktop mouse-hover, keyboard, Escape, outside-click and touch disclosures remain in `site.js`. No new authentication or checkout flow is introduced.
+
+The home and website-check pages use a layered animated source-HTML/browser/check illustration, explicitly labeled as illustrative. The previous numerical health demonstration and growth graph were removed from the home hero. Pause/resume, reduced-motion handling and offscreen pausing remain available. Public checker results still come from the existing endpoint.
+
+Browser QA verified desktop hero/menu layout, Services and Free tools disclosures, Escape, motion pause/resume, mobile navigation to Technical SEO, and a 375px body without horizontal overflow. Static checks verified public IDs, local assets and internal anchors. Original logo bytes were compared before/after. No backend, catalog price or payment configuration changed in this design update.
