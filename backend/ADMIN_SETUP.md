@@ -34,3 +34,6 @@ The UI uses plain text for reports/messages. Delivery, payment-retention checks,
 ## Validation
 
 64 automated tests pass, including eight new admin/SQLite integration tests and a deployment isolation test. The separate Worker dry run validates D1, asset and service bindings. Local browser QA used the real admin and order handlers with isolated in-memory SQLite, a fictional customer and a server-side fixture session. It verified order saving, message retrieval/reply, mobile navigation and a 375px body without horizontal overflow. The QA server relaxed frame headers only for its local mobile iframe; production frame protections remain intact. No production admin/customer credentials, orders or messages were created by QA.
+
+
+Production verification (2026-10-31): the separate Worker at https://zikap-admin.m-mirkhel20.workers.dev/ loaded its one-time owner setup form; the original customer account readiness remained ready:true. Both GitHub Pages and Workers Builds completed successfully. No production admin account was created by the agent; the owner must choose their username/password in the setup form. The legacy owner.html entry now directs to the independent portal.
