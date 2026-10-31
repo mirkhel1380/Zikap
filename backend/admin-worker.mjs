@@ -54,7 +54,7 @@ export default {async fetch(req,env){const url=new URL(req.url),path=url.pathnam
    await env.DB.prepare('DELETE FROM admin_sessions WHERE user_id=?').bind(user.id).run();return json({user:{username:user.username},recoveryKey},200,await startSession({...user,version:user.version+1},env));
   }
   // Forward only the existing owner-order operations, never public/customer/webhook APIs.
-  if(/^\/admin\/orders(?:\/[a-f0-9-]{36}(?:\/messages(?:\/read)?)?)?$/.test(path)&&['GET','POST','PATCH','DELETE'].includes(req.method)){
+  if(/^\/admin\/orders(?:\/[a-f0-9-]{36}(?:\/messages(?:\/read)?|\/history(?:\/[0-9]{1,10})?)?)?$/.test(path)&&['GET','POST','PATCH','DELETE'].includes(req.method)){
    const internal=new URL(req.url);internal.protocol='https:';internal.host='zikap.internal';const headers=new Headers(req.headers);headers.delete('cookie');headers.set('Origin',internal.origin);headers.set('Authorization','Bearer '+env.ADMIN_TOKEN);
    const upstream=await env.ZIKAP_API.fetch(new Request(internal,{method:req.method,headers,body:['GET','HEAD'].includes(req.method)?undefined:req.body,duplex:'half'}));
    const safe=new Headers(security);safe.set('Content-Type','application/json;charset=utf-8');return new Response(upstream.body,{status:upstream.status,headers:safe});

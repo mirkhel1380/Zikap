@@ -1,3 +1,4 @@
+import {historyReady,editVersion,projectHistory} from './history.mjs';
 // Project delivery, customer workspaces and guarded checkout. No email delivery or live crawling.
 import {accountRoute,accountsReady} from './accounts.mjs';
 import {paymentsReady,paymentSummaries,protectOwnerChange,stripeWebhook} from './payments.mjs';
@@ -70,7 +71,7 @@ export default {async fetch(req,env){
       }
       const ready=Object.values(checks).every(value=>value===true);
       const adminSecretStatus=typeof env.ADMIN_TOKEN!=='string'||env.ADMIN_TOKEN.length===0?'missing':env.ADMIN_TOKEN.length<32?'too_short':'configured';
-      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:false,payments:ready&&await paymentsReady(env)},ready?200:503);
+      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:false,payments:ready&&await paymentsReady(env)},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
     if(path==='/stripe/webhook'&&req.method==='POST')return respond(await stripeWebhook(req,env,ApiError));
@@ -129,19 +130,26 @@ export default {async fetch(req,env){
         const row=await env.DB.prepare('SELECT id FROM orders WHERE id=?').bind(threadId).first();if(!row)throw new ApiError('Order not found.',404);
         const result=await projectMessages(req,env,row.id,'owner',{ApiError,jsonBody,rate},!!threadMatch[2]);return respond(result.body,result.status,result.headers);
       }
+      const historyMatch=path.match(/^\/admin\/orders\/([a-f0-9-]{36})\/history(?:\/([^/]+))?$/);
+      if(historyMatch)return respond(await projectHistory(req,env,historyMatch[1],historyMatch[2],ApiError));
       const id=path.match(/^\/admin\/orders\/([a-f0-9-]{36})$/)?.[1];
       if(id&&req.method==='GET'){
         const row=await env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first();if(!row)throw new ApiError('Order not found.',404);
-        const {token_hash,...safe}=row,payment=(await paymentSummaries(env,[id])).get(id),unreadMessages=(await unreadCounts(env,[id],'owner')).get(id);return respond({order:{...safe,payment,unreadMessages}});
+        const {token_hash,...safe}=row,payment=(await paymentSummaries(env,[id])).get(id),unreadMessages=(await unreadCounts(env,[id],'owner')).get(id);return respond({order:{...safe,payment,unreadMessages,editVersion:await editVersion(env,id)}});
       }
       if(id&&req.method==='PATCH'){
         const data=await jsonBody(req,110000),status=text(data.status,30),report=text(data.report,90000,false),note=text(data.note,2000,false);
         if(!states.includes(status))throw new ApiError('Invalid order status.');
         if(status==='delivered'&&!report)throw new ApiError('Add a report before marking delivered.');
+        const expected=data.expectedVersion;let changed=false;
+        if(expected!==undefined){if(!Number.isSafeInteger(expected)||expected<0||expected>2147483647)throw new ApiError('Invalid saved order version.');if(!await historyReady(env))throw new ApiError('Version protection is unavailable. Refresh after the service is updated.',503);const baseline=await env.DB.prepare('SELECT status,report,owner_note,COALESCE((SELECT version FROM order_edit_versions WHERE order_id=orders.id),0) editVersion FROM orders WHERE id=?').bind(id).first();if(!baseline)throw new ApiError('Order not found.',404);if(baseline.editVersion!==expected)throw new ApiError('This order changed in another page or by a customer revision. Your draft is still on this page. Download it before reopening the order to review the latest saved version.',409);changed=baseline.status!==status||baseline.report!==report||baseline.owner_note!==note;}
         await protectOwnerChange(env,id,status,ApiError);
-        const result=await env.DB.prepare('UPDATE orders SET status=?,report=?,owner_note=?,updated_at=? WHERE id=?').bind(status,report,note,new Date().toISOString(),id).run();
-        if(!result.meta.changes)throw new ApiError('Order not found.',404);
-        return respond({updated:true});
+        const savedAt=new Date().toISOString(),statement=expected===undefined?env.DB.prepare('UPDATE orders SET status=?,report=?,owner_note=?,updated_at=? WHERE id=?').bind(status,report,note,savedAt,id):env.DB.prepare('UPDATE orders SET status=?,report=?,owner_note=?,updated_at=? WHERE id=? AND COALESCE((SELECT version FROM order_edit_versions WHERE order_id=orders.id),0)=?').bind(status,report,note,savedAt,id,expected);
+        const result=await statement.run();
+        if(!result.meta.changes){const exists=await env.DB.prepare('SELECT id FROM orders WHERE id=?').bind(id).first();if(!exists)throw new ApiError('Order not found.',404);throw new ApiError('This order changed before your update was saved. Download your draft and reopen the order to review the latest version.',409);}
+        // Acknowledge only this write. A later GET could already reflect another writer.
+        return respond({updated:true,orderUpdate:{status,report,note,updatedAt:savedAt,editVersion:expected===undefined?null:expected+(changed?1:0)}});
+
       }
       if(id&&req.method==='DELETE'){
         await protectOwnerChange(env,id,'delete',ApiError);
