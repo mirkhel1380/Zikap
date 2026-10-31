@@ -1,0 +1,11 @@
+{
+ "$schema":"node_modules/wrangler/config-schema.json",
+ "name":"zikap-admin",
+ "main":"admin-worker.mjs",
+ "compatibility_date":"2026-10-29",
+ "workers_dev":true,
+ "assets":{"directory":"./admin-static","binding":"ADMIN_ASSETS","run_worker_first":true},
+ "services":[{"binding":"ZIKAP_API","service":"zikap"}],
+ "d1_databases":[{"binding":"DB","database_name":"zikap-orders","database_id":"5a8a0f3e-f89e-4c21-b772-66f3732aa22d","migrations_dir":"migrations"}],
+ "observability":{"enabled":false}
+}

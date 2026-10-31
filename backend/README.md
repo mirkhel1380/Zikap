@@ -133,3 +133,8 @@ All 55 existing automated tests pass. Static syntax, IDs/labels and deployment b
 
 
 Report-reader follow-up (2026-10-31): browser QA with fictional API fixtures verified search and combined package filters, empty results, sorting, older-project pagination, literal markup safety, native modal focus, Escape cleanup and the original text download. The library body fit a 375px content viewport and the reader had no horizontal overflow. The toolbar now stays visible while scrolling long reports; the print button gives explicit browser-menu fallback guidance and reports errors. Browser print was invoked, but this test browser did not expose a print/PDF dialog; actual PDF output remains unverified. No production customer data was created or changed.
+
+
+## Independent administration application
+
+`backend/admin-worker.mjs` and `backend/admin-static/` implement a separately deployed `zikap-admin` Worker. It has an owner username/password login, one-time setup authenticated by the existing owner key, private recovery-file flow, password/session management and the existing order/report/message desk. Customer credentials do not authorize admin access. The same D1 order records are accessed through a private binding to the original service; migration 0007 adds isolated admin credentials and sessions. No domain is purchased, no production admin credentials are auto-created and no Stripe secrets are copied to the second Worker. See `backend/ADMIN_SETUP.md` (or `ADMIN_SETUP.md` from backend) for setup, deployment, security boundaries and validation.

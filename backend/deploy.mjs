@@ -23,6 +23,8 @@ export async function deployWithRuntimeSecret({env=process.env,run=runWrangler,l
  }
  const config=JSON.parse(readFileSync(resolve(directory,'wrangler.jsonc'),'utf8'));
  if(config.name!=='zikap'||config.main!=='worker.mjs'||config.assets?.binding!=='ACCOUNT_ASSETS'||config.assets?.directory!=='./account-static'||config.assets?.run_worker_first!==true)throw new Error('Expected the zikap API Worker with main worker.mjs and its account assets binding. No deployment was started.');
+ const adminConfig=JSON.parse(readFileSync(resolve(directory,'admin.wrangler.jsonc'),'utf8'));
+ if(adminConfig.name!=='zikap-admin'||adminConfig.main!=='admin-worker.mjs'||adminConfig.assets?.binding!=='ADMIN_ASSETS'||adminConfig.services?.[0]?.service!=='zikap'||adminConfig.d1_databases?.[0]?.database_id!==config.d1_databases?.[0]?.database_id)throw new Error('Expected the separate zikap-admin Worker bound to the existing orders service and database. No deployment was started.');
  const childEnv={...env};for(const name of ['ADMIN_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET'])delete childEnv[name];
  log('Applying the additive customer-account schema to the existing orders database.');
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0002_customer_accounts.sql','--config','./wrangler.jsonc'],undefined,childEnv);
@@ -34,10 +36,17 @@ export async function deployWithRuntimeSecret({env=process.env,run=runWrangler,l
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0005_project_messages.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Applying the additive message-read schema.');
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0006_message_reads.sql','--config','./wrangler.jsonc'],undefined,childEnv);
+ log('Applying the separate administration account schema.');
+ await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0007_admin_accounts.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Deploying the zikap API Worker with its explicit backend configuration.');
  await run(['deploy','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Registering the existing build secret as an encrypted Worker runtime secret.');
  await run(['secret','bulk','--config','./wrangler.jsonc'],JSON.stringify(secrets),childEnv);
+ const adminEnv={...childEnv};for(const name of ['WRANGLER_CI_OVERRIDE_NAME','WRANGLER_CI_MATCH_TAG','WRANGLER_CI_GENERATE_PREVIEW_ALIAS','WRANGLER_OUTPUT_FILE_PATH','WRANGLER_OUTPUT_FILE_DIRECTORY'])delete adminEnv[name];
+ log('Deploying the separate zikap-admin application.');
+ await run(['deploy','--config','./admin.wrangler.jsonc'],undefined,adminEnv);
+ log('Registering the existing owner secret for the private server-to-server administration bridge.');
+ await run(['secret','bulk','--config','./admin.wrangler.jsonc'],JSON.stringify({ADMIN_TOKEN:secret}),adminEnv);
  log('Worker deployment and runtime secret registration completed.');
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
