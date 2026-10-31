@@ -93,10 +93,10 @@
   const breakdown=$('status-breakdown');breakdown.replaceChildren();for(const [key,label]of [['requested','Awaiting review'],['active','Accepted / in progress'],['delivered','Delivered'],['declined','Declined']]){const count=all.filter(o=>key==='active'?['accepted','in_progress','revision_requested'].includes(o.status):o.status===key).length,row=node('div','','breakdown-row');row.append(node('span',label),node('strong',String(count)));breakdown.append(row);}
  }
  function closeReport(){
-  const reader=$('report-reader');if(reader.open)reader.close();$('report-document').replaceChildren();document.body.classList.remove('report-printing');
+  $('reader-status').textContent='';const reader=$('report-reader');if(reader.open)reader.close();$('report-document').replaceChildren();document.body.classList.remove('report-printing');
  }
  function readReport(order){
-  if(!user||!order.report)return;const documentBox=$('report-document');documentBox.replaceChildren();
+  if(!user||!order.report)return;$('reader-status').textContent='';const documentBox=$('report-document');documentBox.replaceChildren();
   const brand=node('div','','report-brand');const logo=document.createElement('img');logo.src='/account/zikap-logo.svg';logo.alt='Zikap';logo.width=132;logo.height=36;brand.append(logo,node('span','SPECIALIST REPORT','eyebrow'));
   documentBox.append(brand,node('h1',names[order.packageId]||order.packageId));
   const meta=node('dl','','report-metadata');for(const [label,value] of [['Website',order.website],['Project ID',order.id],['Project status',states[order.status]||order.status],['Project updated',new Date(order.updatedAt).toLocaleString()]])meta.append(node('dt',label),node('dd',value));
@@ -104,8 +104,8 @@
   $('reader-download').onclick=()=>download('zikap-report-'+order.id+'.txt',order.report);$('report-reader').showModal();$('reader-close').focus();
  }
  $('reader-close').addEventListener('click',closeReport);
- $('report-reader').addEventListener('close',()=>{$('report-document').replaceChildren();$('reader-download').onclick=null;document.body.classList.remove('report-printing');});
- $('reader-print').addEventListener('click',()=>{document.body.classList.add('report-printing');try{window.print();}catch{document.body.classList.remove('report-printing');}});
+ $('report-reader').addEventListener('close',()=>{$('report-document').replaceChildren();$('reader-download').onclick=null;$('reader-status').textContent='';document.body.classList.remove('report-printing');});
+ $('reader-print').addEventListener('click',()=>{$('reader-status').textContent='Print requested. If no dialog opens, keep this report open and choose Print from your browser menu. PDF saving depends on your browser.';document.body.classList.add('report-printing');try{window.print();}catch{document.body.classList.remove('report-printing');$('reader-status').textContent='Printing could not open. Keep this report open and choose Print from your browser menu, or download the text instead.';}});
  addEventListener('beforeprint',()=>{if($('report-reader').open)document.body.classList.add('report-printing');});
  addEventListener('afterprint',()=>document.body.classList.remove('report-printing'));
  function renderReports(){
