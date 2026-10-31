@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),base=location.origin;
- let cursor=null,session=0;
+ let cursor=null,session=0,selected=null,detailVersion=0;const dirty=new Set();
  const loaded=new Map();
  const states={requested:'Request received',accepted:'Accepted',in_progress:'In progress',delivered:'Report delivered',revision_requested:'Revision requested',declined:'Declined'};
  const packages={
@@ -31,15 +31,9 @@
   return parts.join('\n');
  }
  function filterOrders(){
-  const query=$('owner-search').value.trim().toLowerCase(),state=$('owner-filter').value;let shown=0,review=0,delivered=0,unread=0,unreadKnown=true;
-  for(const {order,box} of loaded.values()){
-   if(['requested','revision_requested'].includes(order.status))review++;
-   if(order.status==='delivered')delivered++;if(Number.isInteger(order.unreadMessages))unread+=order.unreadMessages;else unreadKnown=false;
-   const matches=(!state||(state==='unread'?order.unreadMessages>0:order.status===state))&&(!query||[order.id,order.name,order.email,order.website].join(' ').toLowerCase().includes(query));
-   box.hidden=!matches;if(matches)shown++;
-  }
-  $('owner-unread').textContent=unreadKnown?String(unread):'—';$('owner-total').textContent=String(loaded.size);$('owner-review').textContent=String(review);$('owner-delivered').textContent=String(delivered);
-  $('owner-filter-status').textContent=shown+' of '+loaded.size+' loaded requests shown.';$('owner-empty').hidden=shown!==0;
+  let review=0,delivered=0,unread=0,known=true;for(const {order,box} of loaded.values()){if(['requested','revision_requested'].includes(order.status))review++;if(order.status==='delivered')delivered++;if(Number.isInteger(order.unreadMessages))unread+=order.unreadMessages;else known=false;if(box)box.hidden=selected!==order.id;}
+  $('owner-total').textContent=String(loaded.size);$('owner-review').textContent=String(review);$('owner-delivered').textContent=String(delivered);$('owner-unread').textContent=known?String(unread):'—';
+  window.ZikapAdminWorkspace?.render();
  }
  function render(order){
   const p=packages[order.package_id],box=node('article','','owner-order'),prefix='o-'+order.id;
@@ -81,19 +75,20 @@
   const save=node('button','Save customer update','btn');save.type='submit';
   const remove=button('Delete this request');
   const status=node('p','');status.setAttribute('role','status');form.append(preview,save,remove,status);
-  function updateDraft(){count.textContent=report.value.length.toLocaleString()+' / 90,000 characters';insert.disabled=!!report.value.trim()||!p;download.disabled=!report.value.trim();preview.hidden=true;draftNote.textContent='Unsaved edits on this page. Preview before saving, or download a draft to keep a copy.';}
+  function updateDraft(){dirty.add(order.id);count.textContent=report.value.length.toLocaleString()+' / 90,000 characters';insert.disabled=!!report.value.trim()||!p;download.disabled=!report.value.trim();preview.hidden=true;draftNote.textContent='Unsaved edits on this page. Preview before saving, or download a draft to keep a copy.';}
   [state,note,report].forEach(el=>el.addEventListener('input',updateDraft));count.textContent=report.value.length.toLocaleString()+' / 90,000 characters';download.disabled=!report.value.trim();
   form.addEventListener('submit',async e=>{
    e.preventDefault();
    if(state.value==='delivered'&&(!report.value.trim()||/\[ADD\b/i.test(report.value))){status.textContent='Delivery needs a completed report. Replace every [ADD ...] placeholder and include the actual findings before saving as delivered.';report.focus();return;}
-   save.disabled=true;remove.disabled=true;
-   try{await api('/admin/orders/'+order.id,'PATCH',{status:state.value,note:note.value,report:report.value});order.status=state.value;order.owner_note=note.value;order.report=report.value;badge.textContent=states[order.status];preview.hidden=true;draftNote.textContent='Saved to the server. Your edits are available to the customer with their receipt.';status.textContent='Saved. The customer can see this update with their receipt.';filterOrders();}
-   catch(err){status.textContent=err.message;}finally{save.disabled=false;remove.disabled=false;}
+   const snapshot={status:state.value,note:note.value,report:report.value},saveSession=session;for(const control of form.querySelectorAll('button,input,textarea,select'))control.disabled=true;
+   try{await api('/admin/orders/'+order.id,'PATCH',snapshot);if(saveSession!==session||!box.isConnected)return;const fresh=await api('/admin/orders/'+order.id);if(saveSession!==session||!box.isConnected)return;Object.assign(order,fresh.order);dirty.delete(order.id);badge.textContent=states[order.status];preview.hidden=true;draftNote.textContent='Saved to the server. The customer can see this update in their project.';status.textContent='Customer update saved.';filterOrders();window.ZikapAdminWorkspace.refreshSummary();}
+   catch(err){if(saveSession===session)status.textContent=err.message;}finally{if(box.isConnected){for(const control of form.querySelectorAll('button,input,textarea,select'))control.disabled=false;insert.disabled=!!report.value.trim()||!p;download.disabled=!report.value.trim();}}
+
   });
-  remove.addEventListener('click',async()=>{if(!confirm('Permanently delete this project request, report, saved actions and messages?'))return;remove.disabled=true;try{await api('/admin/orders/'+order.id,'DELETE');loaded.delete(order.id);box.remove();filterOrders();}catch(err){status.textContent=err.message;remove.disabled=false;}});
+  remove.addEventListener('click',async()=>{if(!confirm('Permanently delete this project request, report, saved actions and messages?'))return;remove.disabled=true;try{await api('/admin/orders/'+order.id,'DELETE');loaded.delete(order.id);dirty.delete(order.id);selected=null;box.remove();$('order-editor').hidden=true;filterOrders();window.ZikapAdminWorkspace.refreshSummary();}catch(err){status.textContent=err.message;remove.disabled=false;}});
   const threadDetails=node('details','','owner-thread'),threadHost=node('section',''),threadSession=session;let mounted=false;
   const threadSummary=node('summary','Project messages'+(order.unreadMessages>0?' / '+order.unreadMessages+' unread':''));threadDetails.append(threadSummary,node('p','Account customers can ask questions here. Replies stay with this project; no email is sent. This conversation does not consume the included formal revision.','tiny'),threadHost);
-  threadDetails.addEventListener('toggle',()=>{if(threadDetails.open&&!mounted){mounted=true;window.ZikapProjectThread.mount(threadHost,{api,path:'/admin/orders/'+order.id+'/messages',role:'owner',alive:()=>threadSession===session&&threadHost.isConnected,onUnreadChange:count=>{order.unreadMessages=count;unreadNotice.textContent=count>0?count+' unread customer message'+(count===1?'':'s'):'';unreadNotice.hidden=!(count>0);threadSummary.textContent='Project messages'+(count>0?' / '+count+' unread':'');filterOrders();}});}});
+  threadDetails.addEventListener('toggle',()=>{if(threadDetails.open&&!mounted){mounted=true;window.ZikapProjectThread.mount(threadHost,{api,path:'/admin/orders/'+order.id+'/messages',role:'owner',alive:()=>threadSession===session&&threadHost.isConnected,onUnreadChange:count=>{order.unreadMessages=count;unreadNotice.textContent=count>0?count+' unread customer message'+(count===1?'':'s'):'';unreadNotice.hidden=!(count>0);threadSummary.textContent='Project messages'+(count>0?' / '+count+' unread':'');filterOrders();window.ZikapAdminWorkspace.refreshSummary();}});}});
   box.append(form,threadDetails);loaded.set(order.id,{order,box});$('owner-orders').append(box);
  }
  async function load(more=false){
@@ -102,15 +97,22 @@
   $('owner-refresh').disabled=true;$('owner-more').disabled=true;
   $('owner-refresh').disabled=true;
   try{
-   if(!more){$('owner-orders').replaceChildren();loaded.clear();cursor=null;$('owner-desk').hidden=true;$('owner-more').hidden=true;}
+   if(!more){dirty.clear();selected=null;detailVersion++;$('order-editor').hidden=true;$('owner-orders').replaceChildren();loaded.clear();cursor=null;$('owner-desk').hidden=true;$('owner-more').hidden=true;}
    $('owner-status').textContent='Loading…';const data=await api('/admin/orders'+(cursor?'?before='+encodeURIComponent(cursor):''));
    if(requestSession!==session)return;
-   data.orders.forEach(order=>{if(!loaded.has(order.id))render(order);});cursor=data.next;$('owner-more').hidden=!cursor;$('owner-desk').hidden=false;
+   data.orders.forEach(order=>{if(!loaded.has(order.id))loaded.set(order.id,{order,box:null});});cursor=data.next;$('owner-more').hidden=!cursor;$('owner-desk').hidden=false;
    filterOrders();$('owner-status').textContent=loaded.size+' request(s) loaded. Totals cover loaded requests only.';
   }catch(e){if(requestSession===session)$('owner-status').textContent=e.message;}finally{if(requestSession===session){$('owner-refresh').disabled=false;$('owner-more').disabled=false;$('owner-refresh').disabled=false;}}
  }
  $('owner-more').addEventListener('click',()=>load(true));$('owner-search').addEventListener('input',filterOrders);$('owner-filter').addEventListener('change',filterOrders);
- $('owner-refresh').addEventListener('click',()=>{if(confirm('Reload saved requests and discard unsaved page drafts?'))load();});
- function clear(){session++;cursor=null;loaded.clear();$('owner-orders').replaceChildren();$('owner-more').hidden=true;$('owner-more').disabled=false;$('owner-refresh').disabled=false;$('owner-desk').hidden=true;$('owner-search').value='';$('owner-filter').value='';$('owner-status').textContent='Signed out. Unsaved drafts have been cleared.';}
- window.ZikapAdminDesk={load:()=>{session++;return load();},clear};
+ $('owner-refresh').addEventListener('click',()=>window.ZikapAdminWorkspace.refresh());
+ function clear(){session++;detailVersion++;selected=null;dirty.clear();$('order-editor').hidden=true;cursor=null;loaded.clear();$('owner-orders').replaceChildren();$('owner-more').hidden=true;$('owner-more').disabled=false;$('owner-refresh').disabled=false;$('owner-desk').hidden=true;$('owner-search').value='';$('owner-filter').value='';$('owner-status').textContent='Signed out. Unsaved drafts have been cleared.';}
+ async function open(id,messages=false){
+  if(selected&&dirty.has(selected)&&!confirm('Discard unsaved edits before opening another order?'))return;
+  const version=++detailVersion,requestSession=session;$('owner-status').textContent='Opening order…';
+  try{const result=await api('/admin/orders/'+id);if(version!==detailVersion||requestSession!==session)return;if(selected)dirty.delete(selected);for(const record of loaded.values())record.box=null;$('owner-orders').replaceChildren();selected=id;render(result.order);$('order-editor').hidden=false;window.ZikapAdminWorkspace.navigate('requests');filterOrders();if(messages)$('owner-orders').querySelector('.owner-thread').open=true;(messages?$('owner-orders').querySelector('.owner-thread'):$('order-editor')).scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});$('owner-status').textContent='Order loaded.';}catch(e){if(requestSession===session)$('owner-status').textContent=e.message;}
+ }
+ $('close-order').addEventListener('click',()=>{if(selected&&dirty.has(selected)&&!confirm('Discard unsaved edits and close this order?'))return;if(selected){dirty.delete(selected);const record=loaded.get(selected);if(record)record.box=null;}detailVersion++;selected=null;$('owner-orders').replaceChildren();$('order-editor').hidden=true;$('requests-view').focus();});
+ addEventListener('beforeunload',event=>{if(dirty.size){event.preventDefault();event.returnValue='';}});
+ window.ZikapAdminDesk={load:()=>{session++;return load();},more:()=>load(true),clear,open,api,records:()=>[...loaded.values()].map(v=>v.order),hasMore:()=>!!cursor,hasDraft:()=>dirty.size>0,packages,states};
 })();

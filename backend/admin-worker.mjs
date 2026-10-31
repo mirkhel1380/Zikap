@@ -1,3 +1,4 @@
+import {adminData} from './admin-data.mjs';
 // A separate same-origin administration app. Customer credentials never authorize it.
 const COOKIE='__Host-zikap_admin_session',LIFE=24*60*60;
 const encoder=new TextEncoder();
@@ -44,6 +45,7 @@ export default {async fetch(req,env){const url=new URL(req.url),path=url.pathnam
    await env.DB.prepare('DELETE FROM admin_sessions WHERE user_id=?').bind(user.id).run();return json({user:{username:user.username},recoveryKey},200,await startSession({...user,version:user.version+1},env));
   }
   const user=await session(req,env);await rate(req,env,'read',300);
+  const dataResult=await adminData(req,env,ErrorResponse);if(dataResult!==null)return json(dataResult);
   if(path==='/admin-api/session'&&req.method==='GET')return json({user:{username:user.username}});
   if(path==='/admin-api/logout'&&req.method==='POST'){await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash=?').bind(user.token_hash).run();return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}
   if(path==='/admin-api/password'&&req.method==='POST'){

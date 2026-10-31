@@ -130,6 +130,10 @@ export default {async fetch(req,env){
         const result=await projectMessages(req,env,row.id,'owner',{ApiError,jsonBody,rate},!!threadMatch[2]);return respond(result.body,result.status,result.headers);
       }
       const id=path.match(/^\/admin\/orders\/([a-f0-9-]{36})$/)?.[1];
+      if(id&&req.method==='GET'){
+        const row=await env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first();if(!row)throw new ApiError('Order not found.',404);
+        const {token_hash,...safe}=row,payment=(await paymentSummaries(env,[id])).get(id),unreadMessages=(await unreadCounts(env,[id],'owner')).get(id);return respond({order:{...safe,payment,unreadMessages}});
+      }
       if(id&&req.method==='PATCH'){
         const data=await jsonBody(req,110000),status=text(data.status,30),report=text(data.report,90000,false),note=text(data.note,2000,false);
         if(!states.includes(status))throw new ApiError('Invalid order status.');
