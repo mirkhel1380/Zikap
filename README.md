@@ -1,10 +1,11 @@
 # Zikap
 
-English SEO services website with an original SVG identity and a browser-local HTML checker. Static HTML/CSS/JavaScript; no build dependencies.
+English SEO services website with an original SVG identity, free public website checks and browser-local SEO tools. The marketing site is static HTML/CSS/JavaScript; the separate Cloudflare Worker handles URL checks and account services.
 
 ## Pages
 
 - index.html: home and downloadable project brief
+- website-check.html: free limited public URL check and evidence-based service suggestions
 - services.html: service overview
 - technical-seo.html, keyword-research.html, on-page-seo.html: detailed service guides
 - tools.html: working local HTML checker
@@ -19,7 +20,7 @@ GitHub Pages deploys main / (root). All internal paths are relative and support 
 
 ## Functionality
 
-Paste/upload HTML (up to 2 MB), run 10 heuristic checks, and download a text report. HTML stays in an inert template and is not inserted into the live page. Scores are not Google scores. No live URL fetch, crawl, indexing check, keyword-volume API, speed measurements, or backlink database is connected.
+Paste/upload HTML (up to 2 MB), run 10 heuristic checks, and download a text report. HTML stays in an inert template and is not inserted into the live page. Scores are not Google scores. This local tool does not fetch URLs. The separate public URL checker now fetches a limited sample of source HTML; neither tool checks Google indexing status, keyword volume, speed measurements or backlinks.
 
 The home-page project brief downloads locally; the separate workspace form submits project requests to the API. No payment is taken. Scoped service descriptions are not claims of automated features or guaranteed outcomes.
 
@@ -145,3 +146,11 @@ Owner-authenticated history list/snapshot reads are available through the existi
 Saved report history appears within a selected order. An older report can be read, downloaded or loaded into the local report draft. This preserves current status, owner note and formal revision state. Review and explicit saving are required to publish restored report text. Conflict messages preserve the unsaved draft and offer reopening the latest saved order; download the draft before replacing it.
 
 73 automated tests pass, including report snapshots, literal-text preservation, tied timestamps, stale versions, customer revision invalidation, unchanged saves, rolling retention, migration replay, cascades, missing-schema compatibility and write-acknowledgement isolation. Browser QA was attempted but the connection timed out; this update's visual/mobile interaction verification remains incomplete. No production test orders, customer messages, owner credentials or report changes were created by the agent. See `ROADMAP.md` at the repository root for remaining priorities and intentionally deferred integrations.
+
+## Public website check
+
+The home page, services page and `website-check.html` accept a public website address and consent. `POST /website-audit` checks public DNS and robots rules, then analyzes the submitted HTML page and up to two same-origin linked pages with native Cloudflare HTMLRewriter. Results identify actual pages, findings, evidence, context and coverage limits; summaries download as plain text. No numerical SEO score is invented.
+
+Optional recommendations cite matching finding IDs and use the existing server catalog. No supported findings means no paid-package suggestion. The account link prefills the selected package, website and sampled pages; it creates no order and charges nothing. Existing manual package prices remain unchanged. No JavaScript rendering, full-site crawl, automatic fixing, ranking data or automated specialist fulfillment is included.
+
+85 automated tests pass, including 12 scanner tests with native HTML parsing, safe destinations, robots rules, response limits, verification pages, recommendation matching and quotas. Desktop and 375px mobile browser checks passed using isolated fictional page responses, including findings, clean results and package handoff URLs. Production deployment verification is separate from those fixture checks. See `backend/WEBSITE_CHECK.md` for limits and deployment requirements.

@@ -45,6 +45,7 @@
  }
  $('project-form').addEventListener('input',requestReadiness);$('project-form').addEventListener('change',requestReadiness);
  function scope(){const value=$('project-package').value;$('package-scope').textContent=scopes[value];$('project-page-limit').textContent=value==='onpage'?'(up to 3)':'(up to 5)';$('project-pages').required=value!=='keywords';$('project-topic').required=['keywords','bundle'].includes(value);requestReadiness();}
+ const intakeParams=new URLSearchParams(location.search),intakeWebsite=intakeParams.get('website');if(intakeWebsite&&intakeWebsite.length<=500){try{const url=new URL(intakeWebsite);if(['http:','https:'].includes(url.protocol)&&!url.username&&!url.password&&!url.search){$('project-website').value=url.href;const lines=(intakeParams.get('pages')||url.href).split('\n').slice(0,5);if(lines.every(line=>{const page=new URL(line);return page.origin===url.origin&&!page.username&&!page.password&&!page.search&&page.href.length<=500;}))$('project-pages').value=lines.join('\n');}}catch{}}
  const initialPackage=new URLSearchParams(location.search).get('package');if(Object.hasOwn(names,initialPackage))$('project-package').value=initialPackage;scope();$('project-package').addEventListener('change',scope);
  ['login','register'].forEach(mode=>$('show-'+mode).addEventListener('click',()=>authMode(mode)));$('show-recover').addEventListener('click',()=>authMode('recover'));$('back-login').addEventListener('click',()=>authMode('login'));
  for(const mode of ['login','register','recover']){

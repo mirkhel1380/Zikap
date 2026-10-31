@@ -1,3 +1,4 @@
+import {auditRoute} from './website-audit.mjs';
 import {historyReady,editVersion,projectHistory} from './history.mjs';
 // Project delivery, customer workspaces and guarded checkout. No email delivery or live crawling.
 import {accountRoute,accountsReady} from './accounts.mjs';
@@ -71,9 +72,10 @@ export default {async fetch(req,env){
       }
       const ready=Object.values(checks).every(value=>value===true);
       const adminSecretStatus=typeof env.ADMIN_TOKEN!=='string'||env.ADMIN_TOKEN.length===0?'missing':env.ADMIN_TOKEN.length<32?'too_short':'configured';
-      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:false,payments:ready&&await paymentsReady(env)},ready?200:503);
+      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,websiteAudit:ready&&typeof HTMLRewriter==='function',orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:false,payments:ready&&await paymentsReady(env)},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
+    if(path==='/website-audit')return respond(await auditRoute(req,env,{ApiError,hash,jsonBody,rate}));
     if(path==='/stripe/webhook'&&req.method==='POST')return respond(await stripeWebhook(req,env,ApiError));
     if(path.startsWith('/account-api/')){
       const result=await accountRoute(req,env,{ApiError,hash,text,jsonBody,rate,validateOrder,receipt});

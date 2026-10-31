@@ -13,7 +13,7 @@ The existing browser-local checker runs ten heuristic checks on customer-provide
 - Owner-authenticated request list, status updates, text report delivery, and deletion.
 - Report reading/download in the customer workspace, plus one revision request after delivery.
 - Fixed-origin CORS, body limits, SQL parameter binding, no-store responses and per-IP/hour rate limits.
-- Stripe-hosted payments are implemented but require merchant configuration (see STRIPE_SETUP.md). No email delivery, URL crawling, or external SEO database. No request is automatically accepted. A person must complete the promised research/recommendations and use `owner.html` to deliver the report.
+- Stripe-hosted payments are implemented but require merchant configuration (see STRIPE_SETUP.md). No email delivery or external SEO database. Limited public URL checks are documented in WEBSITE_CHECK.md. No request is automatically accepted. A person must complete the promised research/recommendations and use `owner.html` to deliver the report.
 
 ## Connect a Cloudflare account
 
@@ -69,7 +69,7 @@ The value is reused exactly; it does not need to be regenerated. Once the deploy
 - The owner reported successful production authentication and saving a test delivery. The agent has not verified retrieval of that delivered report with the original receipt.
 - Delivered-report viewing, download and the revision flow have passed local end-to-end QA; their complete production path remains outstanding.
 - Receipt usability now provides focused confirmation, masked keys, direct tracking and repeated download controls. No persistent browser storage or automatic email recovery was added.
-- Automatic email, live crawling, SEO-data integrations and automated fulfillment remain unimplemented. Stripe checkout is implemented but inactive until merchant secrets are configured and tested. Human service fulfillment is still required.
+- Automatic email, full-site crawling, SEO-data integrations and automated fulfillment remain unimplemented. A limited source-HTML URL checker is now available; see WEBSITE_CHECK.md. Stripe checkout is implemented but inactive until merchant secrets are configured and tested. Human service fulfillment is still required.
 
 ## Customer accounts
 
@@ -162,3 +162,7 @@ Owner-authenticated history list/snapshot reads are available through the existi
 Saved report history appears within a selected order. An older report can be read, downloaded or loaded into the local report draft. This preserves current status, owner note and formal revision state. Review and explicit saving are required to publish restored report text. Conflict messages preserve the unsaved draft and offer reopening the latest saved order; download the draft before replacing it.
 
 73 automated tests pass, including report snapshots, literal-text preservation, tied timestamps, stale versions, customer revision invalidation, unchanged saves, rolling retention, migration replay, cascades, missing-schema compatibility and write-acknowledgement isolation. Browser QA was attempted but the connection timed out; this update's visual/mobile interaction verification remains incomplete. No production test orders, customer messages, owner credentials or report changes were created by the agent. See `ROADMAP.md` at the repository root for remaining priorities and intentionally deferred integrations.
+
+## Public URL checker
+
+`POST /website-audit` provides a consent-based, origin-checked initial website check with existing D1 rate-limit storage. No new migration, secret or integration is required. `/health` reports `websiteAudit`. See [WEBSITE_CHECK.md](WEBSITE_CHECK.md) for the request, network policy, findings and actual service matching. The old local HTML checker remains separate.

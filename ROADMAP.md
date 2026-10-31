@@ -2,7 +2,14 @@
 
 Status reviewed on 2026-10-31 against the repository and completed deployment checks. English product UI; the public site, customer account and owner portal remain separate.
 
-## Completed in this update
+## Public website check added
+
+- Public URL checks now analyze up to three permitted source-HTML pages and return evidence, limitations and matched optional manual services. Home/services entry points and a dedicated checker page are connected.
+- Clean supported checks produce no paid recommendation. Package links prefill customer intake without creating orders or payments.
+- 85 automated tests pass; scanner browser checks passed on desktop and a 375px mobile body using isolated page fixtures. Existing history-specific browser verification remains separate.
+- Current prices are unchanged. Lower-cost automated offers and recurring/trial billing need a defined scope and actual merchant configuration before activation.
+
+## Previously completed
 
 - Previous project report/update states are captured on future meaningful edits, including customer revision requests. Up to 20 previous states per order are retained; existing reports are not backfilled into invented historical versions.
 - The owner can inspect/download an older report and load its text into an unsaved draft. Publication remains an explicit save. Current status, owner note and formal revision state are not restored from the old snapshot.
@@ -24,7 +31,7 @@ Status reviewed on 2026-10-31 against the repository and completed deployment ch
 ## Optional later platform work
 
 - Verified email and email notifications after an email provider is selected/configured; private recovery codes are the current recovery method.
-- Live Search Console integration, crawling, keyword/rank data, automated content generation or CMS publishing only after real integrations, costs and permissions are defined. The current CSV explorer and HTML tools use customer-supplied data; specialist packages require actual manual work.
+- Live Search Console integration, full-site crawling, keyword/rank data, automated content generation or CMS publishing only after real integrations, costs and permissions are defined. The current CSV explorer and HTML tools use customer-supplied data; specialist packages require actual manual work.
 - A website content editor is not implemented by the admin dashboard. Customer impersonation, password resets by the owner and destructive account management are not exposed.
 
 ## Current limits
