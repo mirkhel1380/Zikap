@@ -130,16 +130,22 @@
   if(order.status==='delivered')return order.revisionUsed?'Read the latest report and update. Your included clarification has already been requested.':'Read and download your report. You can request one clarification within the original agreed scope.';
   return 'Read the latest update for the reason this request was declined. A different scope needs a new request.';
  }
+ let projectLayout='list';
  function renderProjects(){
-  const list=$('project-list');list.replaceChildren();let active=0,delivered=0,shown=0;const query=$('project-search').value.trim().toLowerCase(),filter=$('project-filter').value;
+  const list=$('project-list');list.replaceChildren();list.classList.toggle('board-view',projectLayout==='board');const matched=[];let active=0,delivered=0,shown=0;const query=$('project-search').value.trim().toLowerCase(),filter=$('project-filter').value;
   for(const order of projects.values()){
    if(['requested','accepted','in_progress','revision_requested'].includes(order.status))active++;if(order.report)delivered++;
    const isActive=['requested','accepted','in_progress','revision_requested'].includes(order.status);
    if(query&&![order.website,names[order.packageId],order.topic,order.id].join(' ').toLowerCase().includes(query))continue;
    if(filter!=='all'&&!(filter==='active'?isActive:filter==='reports'?!!order.report:filter==='unread'?order.unreadMessages>0:order.status===filter))continue;
    shown++;
-   list.append(projectRow(order));
+   matched.push(order);
   }
+  if(projectLayout==='board'&&matched.length){
+   for(const [label,statuses] of [['Awaiting review',['requested']],['In progress',['accepted','in_progress','revision_requested']],['Delivered',['delivered']],['Closed',['declined']]]){
+    const column=node('section','','board-column'),heading=node('h3',label),orders=matched.filter(order=>statuses.includes(order.status));heading.append(node('span',String(orders.length)));column.append(heading);orders.forEach(order=>column.append(projectRow(order)));if(!orders.length)column.append(node('p','No matching projects','empty'));list.append(column);
+   }
+  }else matched.forEach(order=>list.append(projectRow(order)));
   if(!projects.size)list.append(node('p','No projects yet. Choose New request to start a project, or link an earlier receipt.','empty'));
   if(projects.size&&!shown)list.append(node('p','No loaded projects match these filters. Clear filters or load older projects.','empty'));
   $('project-results').textContent='Showing '+shown+' of '+projects.size+' loaded projects'+(cursor?'. Older projects are available below.':'.');
@@ -152,6 +158,7 @@
   finally{if(currentEpoch===epoch){$('refresh-projects').disabled=false;$('more-projects').disabled=false;$('more-reports').disabled=false;$('workspace-refresh').disabled=false;}}
  }
  $('workspace-refresh').addEventListener('click',()=>loadProjects());
+ for(const layout of ['list','board'])$('project-'+layout+'-view').addEventListener('click',()=>{projectLayout=layout;for(const item of ['list','board'])$('project-'+item+'-view').setAttribute('aria-pressed',String(item===layout));renderProjects();});
  $('project-search').addEventListener('input',renderProjects);$('project-filter').addEventListener('change',renderProjects);$('clear-project-filters').addEventListener('click',()=>{$('project-search').value='';$('project-filter').value='all';renderProjects();$('project-search').focus();});
  $('refresh-projects').addEventListener('click',()=>loadProjects());$('more-projects').addEventListener('click',()=>loadProjects(true));
  function mountActionPlan(host,order){
