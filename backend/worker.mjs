@@ -1,6 +1,7 @@
+import {emailReadiness,dispatchNotifications} from './notifications.mjs';
 import {auditRoute} from './website-audit.mjs';
 import {historyReady,editVersion,projectHistory} from './history.mjs';
-// Project delivery, customer workspaces and guarded checkout. No email delivery or live crawling.
+// Project delivery, customer workspaces, guarded checkout and transactional notification queue.
 import {accountRoute,accountsReady} from './accounts.mjs';
 import {paymentReadiness,paymentSummaries,protectOwnerChange,stripeWebhook} from './payments.mjs';
 import {projectMessages,unreadCounts} from './messages.mjs';
@@ -46,7 +47,9 @@ async function admin(req,env){
   const token=req.headers.get('authorization')?.replace(/^Bearer /,'')||'';
   if(await hash(token)!==await hash(env.ADMIN_TOKEN))throw new ApiError('Owner authentication required.',401);
 }
-export default {async fetch(req,env){
+export default {async scheduled(controller,env,ctx){
+  ctx.waitUntil(dispatchNotifications(env).catch(()=>{console.error('Notification queue processing failed.');}));
+},async fetch(req,env){
   const origin=req.headers.get('origin'),allowed=env.ALLOWED_ORIGIN,requestOrigin=new URL(req.url).origin;
   const headers={'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Vary':'Origin'};
   if(origin===allowed){headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Methods']='GET,POST,PATCH,OPTIONS,DELETE';headers['Access-Control-Allow-Headers']='Content-Type,Authorization';}
@@ -72,8 +75,8 @@ export default {async fetch(req,env){
       }
       const ready=Object.values(checks).every(value=>value===true);
       const adminSecretStatus=typeof env.ADMIN_TOKEN!=='string'||env.ADMIN_TOKEN.length===0?'missing':env.ADMIN_TOKEN.length<32?'too_short':'configured';
-      const paymentSetup=await paymentReadiness(env);
-      return respond({service:'zikap-orders-api',version:'runtime-checks-3',ready,checks,adminSecretStatus,orders:ready,websiteAudit:ready&&typeof HTMLRewriter==='function',orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:ready&&typeof HTMLRewriter==='function',websiteAuditScope:'up to 3 public source-HTML pages',payments:ready&&paymentSetup.ready,paymentChecks:paymentSetup.checks},ready?200:503);
+      const paymentSetup=await paymentReadiness(env),emailNotifications=await emailReadiness(env);
+      return respond({service:'zikap-orders-api',version:'runtime-checks-3',ready,checks,adminSecretStatus,orders:ready,websiteAudit:ready&&typeof HTMLRewriter==='function',orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:ready&&typeof HTMLRewriter==='function',websiteAuditScope:'up to 3 public source-HTML pages',payments:ready&&paymentSetup.ready,paymentChecks:paymentSetup.checks,emailNotifications},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
     if(path==='/website-audit')return respond(await auditRoute(req,env,{ApiError,hash,jsonBody,rate}));

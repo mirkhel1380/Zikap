@@ -131,6 +131,7 @@ test('complete order journey uses the independent owner portal, payment reconcil
   assert.equal((await customerCall(cp + '/revision', 'POST', { note: 'Clarify the verification step.' }, customer)).status, 200);
   assert.equal((await customerCall(cp + '/revision', 'POST', { note: 'A second revision.' }, customer)).status, 409);
   assert.equal((await ownerCall(op, 'GET', undefined, owner)).body.order.status, 'revision_requested');
+  assert.deepEqual(f.db.prepare('SELECT kind FROM email_outbox ORDER BY kind').all().map(row=>row.kind), ['payment_confirmed','project_accepted','report_ready','request_received']);
   assert.equal((await customerCall('/account-api/logout', 'POST', {}, customer)).status, 200);
   assert.equal((await customerCall(cp, 'GET', undefined, customer)).status, 401);
   assert.equal((await ownerCall('/admin-api/logout', 'POST', {}, owner)).status, 200);

@@ -15,7 +15,7 @@ The existing browser-local checker runs ten heuristic checks on customer-provide
 - Owner-authenticated request list, status updates, text report delivery, and deletion.
 - Report reading/download in the customer workspace, plus one revision request after delivery.
 - Fixed-origin CORS, body limits, SQL parameter binding, no-store responses and per-IP/hour rate limits.
-- Stripe-hosted payments are implemented but require merchant configuration (see STRIPE_SETUP.md). No email delivery or external SEO database. Limited public URL checks are documented in WEBSITE_CHECK.md. No request is automatically accepted. A person must complete the promised research/recommendations and use `owner.html` to deliver the report.
+- Stripe-hosted payments are implemented but require merchant configuration (see STRIPE_SETUP.md). Transactional email notifications are implemented but sending stays off until a verified sender and provider are configured (see EMAIL_SETUP.md). No external SEO database. Limited public URL checks are documented in WEBSITE_CHECK.md. No request is automatically accepted. A person must complete the promised research/recommendations and use `owner.html` to deliver the report.
 
 ## Connect a Cloudflare account
 
@@ -31,6 +31,10 @@ Run these steps from `backend/` after signing into the business's Cloudflare acc
 8. Run the production smoke test below before opening requests to customers. Check current Cloudflare pricing/usage limits in the account; this repo does not purchase a plan or promise unlimited/free operation.
 
 `ALLOWED_ORIGIN` is the GitHub Pages origin, `https://mirkhel1380.github.io` (not its /Zikap path). Change it when the website origin changes. CORS is not authentication; the admin and receipt bearer keys provide access control.
+
+## Transactional email notifications
+
+[EMAIL_SETUP.md](EMAIL_SETUP.md) documents opt-in sending, four event templates, the durable outbox, retry limits and sender activation. No emails are sent with the default configuration. Email notifications do not verify account email addresses or provide password-reset email.
 
 ## Local verification
 

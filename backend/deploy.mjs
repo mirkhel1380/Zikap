@@ -1,3 +1,4 @@
+import {emailSettings} from './notifications.mjs';
 // Cloudflare Builds keeps its environment separate from Worker runtime bindings.
 // Transfer the existing build secret through stdin; never write or log its value.
 import {spawn} from 'node:child_process';
@@ -21,11 +22,13 @@ export async function deployWithRuntimeSecret({env=process.env,run=runWrangler,l
   if(typeof env[name]!=='string'||(name==='STRIPE_SECRET_KEY'?!/^(sk|rk)_(test|live)_/.test(env[name]):!env[name].startsWith('whsec_')))throw new Error(name+' is not in the expected format. No deployment was started.');
   secrets[name]=env[name];
  }
+ if(env.RESEND_API_KEY){if(typeof env.RESEND_API_KEY!=='string'||!/^re_[A-Za-z0-9_-]{8,200}$/.test(env.RESEND_API_KEY))throw new Error('RESEND_API_KEY has an invalid format. No deployment was started.');secrets.RESEND_API_KEY=env.RESEND_API_KEY;}
+ if(env.EMAIL_SETTINGS){const email=emailSettings(env);if(!email.checks.settings||(email.enabled&&(!email.checks.sender||!email.checks.startAt)))throw new Error('EMAIL_SETTINGS needs valid notification settings before deployment.');secrets.EMAIL_SETTINGS=env.EMAIL_SETTINGS;}
  const config=JSON.parse(readFileSync(resolve(directory,'wrangler.jsonc'),'utf8'));
  if(config.name!=='zikap'||config.main!=='worker.mjs'||config.assets?.binding!=='ACCOUNT_ASSETS'||config.assets?.directory!=='./account-static'||config.assets?.run_worker_first!==true)throw new Error('Expected the zikap API Worker with main worker.mjs and its account assets binding. No deployment was started.');
  const adminConfig=JSON.parse(readFileSync(resolve(directory,'admin.wrangler.jsonc'),'utf8'));
  if(adminConfig.name!=='zikap-admin'||adminConfig.main!=='admin-worker.mjs'||adminConfig.assets?.binding!=='ADMIN_ASSETS'||adminConfig.services?.[0]?.service!=='zikap'||adminConfig.d1_databases?.[0]?.database_id!==config.d1_databases?.[0]?.database_id)throw new Error('Expected the separate zikap-admin Worker bound to the existing orders service and database. No deployment was started.');
- const childEnv={...env};for(const name of ['ADMIN_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET'])delete childEnv[name];
+ const childEnv={...env};for(const name of ['ADMIN_TOKEN','STRIPE_SECRET_KEY','STRIPE_WEBHOOK_SECRET','RESEND_API_KEY','EMAIL_SETTINGS'])delete childEnv[name];
  log('Applying the additive customer-account schema to the existing orders database.');
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0002_customer_accounts.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Applying the additive Stripe payment-record schema.');
@@ -40,6 +43,8 @@ export async function deployWithRuntimeSecret({env=process.env,run=runWrangler,l
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0007_admin_accounts.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Applying saved project history and version protection.');
  await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0008_order_history.sql','--config','./wrangler.jsonc'],undefined,childEnv);
+ log('Applying the additive transactional email outbox schema.');
+ await run(['d1','execute','zikap-orders','--remote','--file','./migrations/0009_email_notifications.sql','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Deploying the zikap API Worker with its explicit backend configuration.');
  await run(['deploy','--config','./wrangler.jsonc'],undefined,childEnv);
  log('Registering the existing build secret as an encrypted Worker runtime secret.');
