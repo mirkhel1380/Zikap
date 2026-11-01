@@ -2,7 +2,7 @@ import {auditRoute} from './website-audit.mjs';
 import {historyReady,editVersion,projectHistory} from './history.mjs';
 // Project delivery, customer workspaces and guarded checkout. No email delivery or live crawling.
 import {accountRoute,accountsReady} from './accounts.mjs';
-import {paymentsReady,paymentSummaries,protectOwnerChange,stripeWebhook} from './payments.mjs';
+import {paymentReadiness,paymentSummaries,protectOwnerChange,stripeWebhook} from './payments.mjs';
 import {projectMessages,unreadCounts} from './messages.mjs';
 import {prices} from './catalog.mjs';
 const states = ['requested','accepted','in_progress','delivered','declined'];
@@ -72,7 +72,8 @@ export default {async fetch(req,env){
       }
       const ready=Object.values(checks).every(value=>value===true);
       const adminSecretStatus=typeof env.ADMIN_TOKEN!=='string'||env.ADMIN_TOKEN.length===0?'missing':env.ADMIN_TOKEN.length<32?'too_short':'configured';
-      return respond({service:'zikap-orders-api',version:'runtime-checks-2',ready,checks,adminSecretStatus,orders:ready,websiteAudit:ready&&typeof HTMLRewriter==='function',orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:ready&&typeof HTMLRewriter==='function',websiteAuditScope:'up to 3 public source-HTML pages',payments:ready&&await paymentsReady(env)},ready?200:503);
+      const paymentSetup=await paymentReadiness(env);
+      return respond({service:'zikap-orders-api',version:'runtime-checks-3',ready,checks,adminSecretStatus,orders:ready,websiteAudit:ready&&typeof HTMLRewriter==='function',orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:ready&&typeof HTMLRewriter==='function',websiteAuditScope:'up to 3 public source-HTML pages',payments:ready&&paymentSetup.ready,paymentChecks:paymentSetup.checks},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
     if(path==='/website-audit')return respond(await auditRoute(req,env,{ApiError,hash,jsonBody,rate}));

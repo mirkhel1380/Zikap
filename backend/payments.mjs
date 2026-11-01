@@ -5,7 +5,17 @@ export const stripeConfigured=env=>typeof env.STRIPE_SECRET_KEY==='string'&&/^(s
 const testMode=env=>!env.STRIPE_SECRET_KEY?.includes('_live_');
 const hex=bytes=>[...new Uint8Array(bytes)].map(v=>v.toString(16).padStart(2,'0')).join('');
 const equal=(a,b)=>{if(a.length!==b.length)return false;let n=0;for(let i=0;i<a.length;i++)n|=a.charCodeAt(i)^b.charCodeAt(i);return n===0;};
-export async function paymentsReady(env){if(!stripeConfigured(env)||!env.DB)return false;try{await env.DB.prepare('SELECT order_id,session_id FROM order_payments LIMIT 1').first();await env.DB.prepare('SELECT id FROM stripe_events LIMIT 1').first();return true;}catch{return false;}}
+// Non-sensitive readiness only: never expose key values, fragments, lengths or database errors.
+export async function paymentReadiness(env){
+ const status=(value,pattern)=>typeof value!=='string'||value.length===0?'missing':pattern.test(value)?'configured':'invalid_format';
+ const checks={secretKey:status(env.STRIPE_SECRET_KEY,/^(sk|rk)_(test|live)_/),webhookSecret:status(env.STRIPE_WEBHOOK_SECRET,/^whsec_/),databaseBinding:!!env.DB,paymentRecordsTable:null,webhookEventsTable:null};
+ if(env.DB){
+  try{await env.DB.prepare('SELECT order_id,session_id FROM order_payments LIMIT 1').first();checks.paymentRecordsTable=true;}catch{checks.paymentRecordsTable=false;}
+  try{await env.DB.prepare('SELECT id FROM stripe_events LIMIT 1').first();checks.webhookEventsTable=true;}catch{checks.webhookEventsTable=false;}
+ }
+ return{ready:stripeConfigured(env)&&checks.databaseBinding&&checks.paymentRecordsTable===true&&checks.webhookEventsTable===true,checks};
+}
+export async function paymentsReady(env){if(!stripeConfigured(env)||!env.DB)return false;return(await paymentReadiness(env)).ready;}
 function summary(row,available){return{available,status:row?row.refunded_cents>=row.amount_cents?'refunded':row.refunded_cents>0?'partially_refunded':row.state==='paid'?'paid':row.state==='expired'?'unpaid':'pending':'unpaid',testMode:row?!!row.test_mode:null,amountCents:row?.amount_cents||0,currency:'usd',paidAt:row?.paid_at||'',refundedCents:row?.refunded_cents||0};}
 export async function paymentSummaries(env,ids){
  const values=new Map();if(!ids.length)return values;

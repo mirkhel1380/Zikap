@@ -94,3 +94,18 @@ test('a checkout with an unknown result is not recreated after the idempotency s
  const{db,env,transport,calls}=setup(),a=await create(env);env.STRIPE_HTTP=async(...args)=>{await transport(...args);throw new Error('fixture response lost');};await checkout(env,a);
  db.prepare('UPDATE order_payments SET started_at=?,lock_until=0').run(Math.floor(Date.now()/1000)-24*3600);assert.equal((await checkout(env,a)).status,409);assert.equal(calls.length,1);db.close();
 });
+
+
+test('health pinpoints missing or malformed secrets without returning values or provider calls',async()=>{
+ const{db,env,calls}=setup();
+ for(const [patch,expected]of [[{},['configured','configured',true]],[{STRIPE_SECRET_KEY:undefined},['missing','configured',false]],[{STRIPE_SECRET_KEY:'pk_test_sensitive_fixture'},['invalid_format','configured',false]],[{STRIPE_SECRET_KEY:' sk_test_sensitive_fixture'},['invalid_format','configured',false]],[{STRIPE_WEBHOOK_SECRET:''},['configured','missing',false]],[{STRIPE_WEBHOOK_SECRET:'wrong_sensitive_fixture'},['configured','invalid_format',false]],[{STRIPE_SECRET_KEY:'rk_test_fixture'},['configured','configured',true]]]){
+  const result=await call({...env,...patch},'/health');assert.equal(result.status,200);assert.equal(result.body.ready,true);assert.equal(result.body.paymentChecks.secretKey,expected[0]);assert.equal(result.body.paymentChecks.webhookSecret,expected[1]);assert.equal(result.body.payments,expected[2]);
+  const serialized=JSON.stringify(result.body);for(const value of [env.STRIPE_SECRET_KEY,env.STRIPE_WEBHOOK_SECRET,...Object.values(patch)].filter(Boolean))assert.equal(serialized.includes(value),false);assert.equal(serialized.includes('sensitive_fixture'),false);
+ }
+ assert.equal(calls.length,0);db.close();
+});
+test('payment readiness distinguishes schema failures and missing binding from secret configuration',async()=>{
+ const{db,env}=setup();db.exec('DROP TABLE stripe_events');let result=await call(env,'/health');assert.equal(result.body.paymentChecks.paymentRecordsTable,true);assert.equal(result.body.paymentChecks.webhookEventsTable,false);assert.equal(result.body.payments,false);assert.equal(result.body.ready,true);
+ db.exec('DROP TABLE order_payments');result=await call(env,'/health');assert.equal(result.body.paymentChecks.paymentRecordsTable,false);assert.equal(result.body.paymentChecks.webhookEventsTable,false);
+ result=await call({...env,DB:undefined},'/health');assert.equal(result.status,503);assert.equal(result.body.paymentChecks.databaseBinding,false);assert.equal(result.body.paymentChecks.paymentRecordsTable,null);assert.equal(result.body.payments,false);assert.equal(JSON.stringify(result.body).includes('no such table'),false);db.close();
+});

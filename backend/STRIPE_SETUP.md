@@ -28,3 +28,7 @@ Primary implementation references:
 - https://docs.stripe.com/checkout/fulfillment
 - https://docs.stripe.com/events/manage-webhook-endpoints
 - https://github.com/stripe/stripe-node/blob/master/src/Webhooks.ts
+
+## Readiness diagnostics
+
+`/health` now returns `paymentChecks`: `secretKey` and `webhookSecret` are `missing`, `invalid_format` or `configured`; `databaseBinding` is a boolean; `paymentRecordsTable` and `webhookEventsTable` are booleans, or null when no database is bound. Key configuration checks recognize supported prefixes only, not Stripe validity, permissions, account eligibility or destination settings. No secret values, fragments, lengths, SQL errors or Stripe records are returned. These diagnostics make no Stripe requests and create no payment. Existing runtime secrets omitted from Builds remain preserved by deployment.
