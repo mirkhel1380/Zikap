@@ -109,3 +109,18 @@ test('payment readiness distinguishes schema failures and missing binding from s
  db.exec('DROP TABLE order_payments');result=await call(env,'/health');assert.equal(result.body.paymentChecks.paymentRecordsTable,false);assert.equal(result.body.paymentChecks.webhookEventsTable,false);
  result=await call({...env,DB:undefined},'/health');assert.equal(result.status,503);assert.equal(result.body.paymentChecks.databaseBinding,false);assert.equal(result.body.paymentChecks.paymentRecordsTable,null);assert.equal(result.body.payments,false);assert.equal(JSON.stringify(result.body).includes('no such table'),false);db.close();
 });
+
+
+test('Stripe rejections expose safe actionable categories, never raw messages or arbitrary parameters',async()=>{
+ const raw='sk_test_sensitive_fixture_credential',cases=[
+  [401,{code:'invalid_api_key'},'STRIPE_AUTHENTICATION'],[400,{code:'api_key_expired'},'STRIPE_AUTHENTICATION'],[403,{},'STRIPE_PERMISSIONS'],[429,{},'STRIPE_RATE_LIMIT'],[409,{},'STRIPE_IDEMPOTENCY'],[400,{type:'idempotency_error'},'STRIPE_IDEMPOTENCY'],[400,{code:'account_invalid'},'STRIPE_ACCOUNT'],[400,{param:'adaptive_pricing[enabled]'},'STRIPE_REQUEST'],[400,{param:raw},'STRIPE_REQUEST'],[402,{},'STRIPE_REQUEST'],[500,{},'STRIPE_PROVIDER']
+ ];
+ for(const [status,error,category]of cases){
+  const{db,env}=setup(),a=await create(env);let sent;
+  env.STRIPE_HTTP=async(url,options)=>{sent=options;return Response.json({error:{...error,message:raw,request_log_url:'https://example.com/private/'+raw},secret:raw},{status});};
+  const response=await checkout(env,a);assert.equal(response.status,503);assert.ok(response.body.error.includes('['+category+']'));assert.equal(JSON.stringify(response.body).includes(raw),false);assert.equal(JSON.stringify(response.body).includes('request_log_url'),false);assert.equal(JSON.stringify(response.body).includes(env.STRIPE_SECRET_KEY),false);
+  if(error.param==='adaptive_pricing[enabled]')assert.ok(response.body.error.includes(error.param));
+  const row=db.prepare('SELECT * FROM order_payments WHERE order_id=?').get(a.id);assert.equal(row.state,'creating');assert.equal(row.lock_until,0);assert.equal(row.session_id,null);
+  const firstKey=sent.headers['Idempotency-Key'],firstBody=sent.body;await checkout(env,a);assert.equal(sent.headers['Idempotency-Key'],firstKey);assert.equal(sent.body,firstBody);assert.equal(db.prepare('SELECT count(*) AS n FROM order_payments').get().n,1);db.close();
+ }
+});

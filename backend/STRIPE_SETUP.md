@@ -32,3 +32,7 @@ Primary implementation references:
 ## Readiness diagnostics
 
 `/health` now returns `paymentChecks`: `secretKey` and `webhookSecret` are `missing`, `invalid_format` or `configured`; `databaseBinding` is a boolean; `paymentRecordsTable` and `webhookEventsTable` are booleans, or null when no database is bound. Key configuration checks recognize supported prefixes only, not Stripe validity, permissions, account eligibility or destination settings. No secret values, fragments, lengths, SQL errors or Stripe records are returned. These diagnostics make no Stripe requests and create no payment. Existing runtime secrets omitted from Builds remain preserved by deployment.
+
+## Checkout rejection support codes
+
+Stripe non-2xx replies now map to fixed support categories: STRIPE_AUTHENTICATION, STRIPE_PERMISSIONS, STRIPE_RATE_LIMIT, STRIPE_IDEMPOTENCY, STRIPE_ACCOUNT, STRIPE_REQUEST or STRIPE_PROVIDER. Configuration errors can include an exact allowlisted server-sent parameter name. The application never relays provider messages, arbitrary parameter strings, credential fragments, request IDs, log URLs, headers or raw response bodies. Readiness remains a local configuration/schema check and does not certify API-key validity. Rejected attempts retain the original immutable request and idempotency key; no automatic replacement session or key change is introduced.

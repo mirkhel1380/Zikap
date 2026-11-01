@@ -22,12 +22,28 @@ export async function paymentSummaries(env,ids){
  try{const {results}=await env.DB.prepare('SELECT * FROM order_payments WHERE order_id IN ('+ids.map(()=>'?').join(',')+')').bind(...ids).all();const rows=new Map(results.map(row=>[row.order_id,row]));for(const id of ids)values.set(id,summary(rows.get(id),stripeConfigured(env)));}
  catch{for(const id of ids)values.set(id,summary(null,false));}return values;
 }
+// Classify provider failures using fixed categories and exact known parameter names only.
+// Never relay Stripe's raw message, headers, request IDs, secret fragments or response body.
+function stripeFailure(status,data){
+ const code=typeof data?.error?.code==='string'?data.error.code:'';
+ if(status===401||['api_key_expired','secret_key_required'].includes(code))return 'Stripe rejected the server API key. The owner must verify the Stripe secret key in Cloudflare. No payment has been confirmed. [STRIPE_AUTHENTICATION]';
+ if(status===403)return 'Stripe denied this API request. The owner must check the server key permissions in Stripe. No payment has been confirmed. [STRIPE_PERMISSIONS]';
+ if(status===429)return 'Stripe is limiting requests. Wait before trying checkout again. No payment has been confirmed. [STRIPE_RATE_LIMIT]';
+ if(status===409||data?.error?.type==='idempotency_error')return 'Stripe could not reuse the existing checkout request. The owner must review the earlier attempt before another payment. No payment has been confirmed. [STRIPE_IDEMPOTENCY]';
+ if(['account_invalid','platform_account_required'].includes(code))return 'Stripe rejected the account configuration. The owner must review the selected account and its setup in Stripe. No payment has been confirmed. [STRIPE_ACCOUNT]';
+ if(status===400||status===402){
+  const known=new Set(['mode','currency','success_url','cancel_url','payment_method_types','payment_method_types[0]','adaptive_pricing','adaptive_pricing[enabled]','line_items','line_items[0][price_data][currency]','line_items[0][price_data][unit_amount]','line_items[0][price_data][product_data][name]','line_items[0][quantity]','client_reference_id','metadata','payment_intent_data','payment_intent_data[metadata][orderId]']);
+  const param=typeof data?.error?.param==='string'&&known.has(data.error.param)?' Setting: '+data.error.param+'.':'';
+  return 'Stripe rejected the checkout configuration.'+param+' The owner should review the failed request in Stripe Workbench logs. No payment has been confirmed. [STRIPE_REQUEST]';
+ }
+ return 'Stripe checkout is temporarily unavailable. The owner should review the failed request in Stripe Workbench logs before another payment. No payment has been confirmed. [STRIPE_PROVIDER]';
+}
 async function stripe(env,path,method,params,idempotency,ApiError){
  const headers={Authorization:'Bearer '+env.STRIPE_SECRET_KEY,'Stripe-Version':version};if(params)headers['Content-Type']='application/x-www-form-urlencoded';if(idempotency)headers['Idempotency-Key']=idempotency;
  const transport=typeof env.STRIPE_HTTP==='function'?env.STRIPE_HTTP:fetch;
  let response;try{response=await transport('https://api.stripe.com/v1'+path,{method,headers,body:params||undefined,signal:AbortSignal.timeout(15000)});}catch{throw new ApiError('Stripe could not be reached. No payment has been confirmed. Please try again.',503);}
  let data;try{data=await response.json();}catch{throw new ApiError('Stripe did not return a valid response. Please try again.',503);}
- if(!response.ok)throw new ApiError('Stripe checkout is temporarily unavailable. Please contact Zikap before trying another payment.',503);return data;
+ if(!response.ok)throw new ApiError(stripeFailure(response.status,data),503);return data;
 }
 function validSession(session,row,ApiError){
  if(typeof session.id!=='string'||!/^cs_[A-Za-z0-9_]{1,240}$/.test(session.id))throw new ApiError('Stripe returned an invalid checkout reference.',400);
