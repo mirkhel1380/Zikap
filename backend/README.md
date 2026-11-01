@@ -1,6 +1,8 @@
 # Zikap project requests and delivery
 
-This companion Cloudflare Worker keeps the public website on GitHub Pages. It is deployed as Worker `zikap` at `https://zikap.m-mirkhel20.workers.dev`, and `../api-config.js` points to it. The deployed `/health` now returns `ready:true` with `adminSecretStatus:"configured"`; the database binding and both tables also pass. The public form enables requests and tracking. Production test request creation and private receipt lookup were verified on 2026-10-30. The owner reported successfully saving a test report. Customer-side retrieval of that delivered production report and the production revision flow remain unverified. The public workspace disables submission until a configured API passes its readiness check. Do not announce online orders as active until the complete production smoke test below passes.
+This companion Cloudflare Worker keeps the public website on GitHub Pages. It is deployed as Worker `zikap` at `https://zikap.m-mirkhel20.workers.dev`, and `../api-config.js` points to it. Customers use `/account/`; the owner uses the separate administration Worker. Project and payment records are backed by D1. Public readiness checks report configuration and schema availability, not merchant payment eligibility or successful live processing.
+
+See [ORDER_JOURNEY_QA.md](ORDER_JOURNEY_QA.md) for the integrated customer/owner journey verification, the 71 passing isolated checks and the remaining live-provider verification limit. The merchant has reported successful sandbox checkout, webhook replay and refund checks. A genuine live purchase has not been independently observed.
 
 ## What works without a server
 
