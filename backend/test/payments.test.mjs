@@ -124,3 +124,49 @@ test('Stripe rejections expose safe actionable categories, never raw messages or
   const firstKey=sent.headers['Idempotency-Key'],firstBody=sent.body;await checkout(env,a);assert.equal(sent.headers['Idempotency-Key'],firstKey);assert.equal(sent.body,firstBody);assert.equal(db.prepare('SELECT count(*) AS n FROM order_payments').get().n,1);db.close();
  }
 });
+
+const discontinued={type:'invalid_request_error',param:'payment_method_types',message:'The `payment_method_types` parameter is no longer supported when creating a Checkout Session. Payment methods are now managed from your Dashboard settings.'};
+async function seedLegacy(fixture){
+ const{db,env}=fixture,a=await create(env),previous=env.STRIPE_HTTP;
+ env.STRIPE_HTTP=async()=>{throw Error('fixture before any remote request');};assert.equal((await checkout(env,a)).status,503);env.STRIPE_HTTP=previous;
+ const row=db.prepare('SELECT * FROM order_payments WHERE order_id=?').get(a.id),params=new URLSearchParams(row.request_params);params.set('payment_method_types[0]','card');db.prepare('UPDATE order_payments SET request_params=? WHERE order_id=?').run(params.toString(),a.id);
+ return{a,row:{...row,request_params:params.toString()}};
+}
+test('new sessions use Dashboard-managed methods without changing one-time USD scope',async()=>{
+ const{db,env,calls}=setup(),a=await create(env);assert.equal((await checkout(env,a)).status,200);const params=new URLSearchParams(calls[0].options.body);assert.equal([...params.keys()].some(key=>/^payment_method_types/.test(key)),false);assert.equal(params.get('mode'),'payment');assert.equal(params.get('line_items[0][price_data][currency]'),'usd');assert.equal(params.get('line_items[0][price_data][unit_amount]'),'2900');db.close();
+});
+test('a cached unsupported-parameter rejection migrates once under a fresh immutable key',async()=>{
+ const f=setup(),{a,row}=await seedLegacy(f),{db,env,transport,sessions}=f,trace=[];
+ env.STRIPE_HTTP=async(url,options)=>{trace.push(options);return new URLSearchParams(options.body).has('payment_method_types[0]')?Response.json({error:discontinued},{status:400}):transport(url,options);};
+ const response=await checkout(env,a);assert.equal(response.status,200);assert.equal(trace.length,2);assert.equal(trace[0].body,row.request_params);assert.equal(trace[0].headers['Idempotency-Key'],'zikap-checkout:'+a.id+':'+row.generation);assert.notEqual(trace[1].headers['Idempotency-Key'],trace[0].headers['Idempotency-Key']);
+ const saved=db.prepare('SELECT * FROM order_payments WHERE order_id=?').get(a.id),before=new URLSearchParams(row.request_params),after=new URLSearchParams(saved.request_params);before.delete('payment_method_types[0]');before.set('metadata[generation]',saved.generation);assert.equal(before.toString(),after.toString());assert.equal(after.get('metadata[generation]'),saved.generation);assert.equal(saved.state,'pending');assert.equal(saved.lock_until,0);assert.equal(sessions.size,1);assert.equal(db.prepare('SELECT count(*) AS n FROM order_payments').get().n,1);
+ assert.equal((await checkout(env,a)).body.url,response.body.url);assert.equal(trace.length,2);db.close();
+});
+test('a migrated session with a lost response reuses its new key rather than creating another session',async()=>{
+ const f=setup(),{a,row}=await seedLegacy(f),{db,env,transport,sessions}=f,trace=[];let lose=true;
+ env.STRIPE_HTTP=async(url,options)=>{trace.push(options);if(new URLSearchParams(options.body).has('payment_method_types[0]'))return Response.json({error:discontinued},{status:400});const response=await transport(url,options);if(lose){lose=false;throw Error('fixture lost migrated response');}return response;};
+ assert.equal((await checkout(env,a)).status,503);const saved=db.prepare('SELECT * FROM order_payments WHERE order_id=?').get(a.id);assert.notEqual(saved.generation,row.generation);assert.equal(saved.state,'creating');assert.equal(saved.lock_until,0);assert.equal(sessions.size,1);
+ assert.equal((await checkout(env,a)).status,200);assert.equal(sessions.size,1);assert.equal(trace.length,3);assert.equal(trace[1].headers['Idempotency-Key'],trace[2].headers['Idempotency-Key']);assert.equal(trace[1].body,trace[2].body);db.close();
+});
+test('legacy sessions with a successful unknown outcome are recovered using the original key',async()=>{
+ const f=setup(),{a,row}=await seedLegacy(f),{db,env,transport,sessions,calls}=f;let lose=true;
+ env.STRIPE_HTTP=async(...args)=>{const response=await transport(...args);if(lose){lose=false;throw Error('fixture legacy success response lost');}return response;};
+ assert.equal((await checkout(env,a)).status,503);assert.equal((await checkout(env,a)).status,200);assert.equal(sessions.size,1);assert.equal(db.prepare('SELECT generation FROM order_payments').get().generation,row.generation);assert.equal(calls[0].options.body,calls[1].options.body);assert.equal(calls[0].options.headers['Idempotency-Key'],calls[1].options.headers['Idempotency-Key']);db.close();
+});
+test('other provider rejections cannot rotate a legacy attempt or weaken retry safety',async()=>{
+ for(const [status,error]of [[500,discontinued],[401,discontinued],[400,{...discontinued,param:'other'}],[400,{...discontinued,message:'Card is not enabled for this account.'}],[400,{...discontinued,type:'api_error'}]]){
+  const f=setup(),{a,row}=await seedLegacy(f),{db,env,sessions}=f;let calls=0;env.STRIPE_HTTP=async()=>{calls++;return Response.json({error},{status});};assert.equal((await checkout(env,a)).status,503);assert.equal(calls,1);const saved=db.prepare('SELECT * FROM order_payments').get();assert.equal(saved.generation,row.generation);assert.equal(saved.request_params,row.request_params);assert.equal(saved.state,'creating');assert.equal(sessions.size,0);db.close();
+ }
+});
+test('parallel legacy retries acquire one lease and create one replacement session',async()=>{
+ const f=setup(),{a}=await seedLegacy(f),{db,env,transport,sessions}=f;let release,entered,count=0;const gate=new Promise(resolve=>release=resolve),started=new Promise(resolve=>entered=resolve);
+ env.STRIPE_HTTP=async(url,options)=>{count++;if(new URLSearchParams(options.body).has('payment_method_types[0]')){entered();await gate;return Response.json({error:discontinued},{status:400});}return transport(url,options);};
+ const first=checkout(env,a);await started;assert.equal((await checkout(env,a)).status,409);release();assert.equal((await first).status,200);assert.equal(count,2);assert.equal(sessions.size,1);db.close();
+});
+test('a stale migration cannot rotate or unlock a newer lease, or mutate a paid record',async()=>{
+ for(const changed of ['lease','paid']){
+  const f=setup(),{a,row}=await seedLegacy(f),{db,env}=f;let count=0;const future=Math.floor(Date.now()/1000)+120;
+  env.STRIPE_HTTP=async()=>{count++;if(changed==='lease')db.prepare('UPDATE order_payments SET lock_until=? WHERE order_id=?').run(future,a.id);else db.prepare("UPDATE order_payments SET state='paid',paid_at='fixture-paid' WHERE order_id=?").run(a.id);return Response.json({error:discontinued},{status:400});};
+  assert.equal((await checkout(env,a)).status,409);assert.equal(count,1);const saved=db.prepare('SELECT * FROM order_payments').get();assert.equal(saved.generation,row.generation);assert.equal(saved.request_params,row.request_params);if(changed==='lease')assert.equal(saved.lock_until,future);else assert.equal(saved.state,'paid');db.close();
+ }
+});

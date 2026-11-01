@@ -203,7 +203,7 @@
   else if(!payment.available)paymentBox.append(node('p','Online checkout is not enabled yet. Sending a project request does not charge you.'));
   else if(order.status!=='accepted')paymentBox.append(node('p','Stripe checkout opens after your project is accepted and the scope and timing are confirmed.'));
   else{
-   paymentBox.append(node('p',(payment.status==='pending'?'An existing checkout is pending. ':'')+'One-time payment: $'+order.price+' USD. Card details are entered on Stripe’s hosted checkout page.'));
+   paymentBox.append(node('p',(payment.status==='pending'?'An existing checkout is pending. ':'')+'One-time payment: $'+order.price+' USD. Payment details are entered on Stripe’s hosted checkout page.'));
    if(payment.testMode===true||paymentTestMode===true)paymentBox.append(node('p','TEST MODE / No real payment will be collected.','note'));
    const label=node('label','','check'),check=document.createElement('input');check.type='checkbox';check.id='pay-confirm-'+order.id;label.htmlFor=check.id;label.append(check,node('span','I confirm the package scope and the $'+order.price+' USD amount.'));
    const pay=button('Continue to Stripe checkout','btn'),message=node('p','');pay.disabled=true;message.setAttribute('role','status');check.addEventListener('change',()=>{pay.disabled=!check.checked;});

@@ -11,7 +11,7 @@ Test the complete journey with a disposable test project: create a customer acco
 
 ## Implemented behavior
 
-- Only the signed-in owner of an accepted project can open checkout. Package amounts come from the server catalog and stored order, not browser parameters. Payments are one-time USD card payments through Stripe-hosted Checkout. The application never receives card details.
+- Only the signed-in owner of an accepted project can open checkout. Package amounts come from the server catalog and stored order, not browser parameters. Payments are one-time USD payments through Stripe-hosted Checkout, using eligible payment methods enabled in the Stripe Dashboard. The application never receives card details.
 - Checkout attempts persist a generation, immutable request parameters, Stripe idempotency key and short creation lease. Concurrent clicks and lost responses reuse the same attempt. An expired session is retrieved from Stripe before replacement. A sufficiently old attempt with an unknown outcome is blocked for merchant review rather than recreated.
 - The Stripe session must match the project, generation, mode, currency and exact amount. Only an authoritative paid/complete session, verified through a signed webhook or a server-side Stripe read, marks payment confirmed. A return URL or browser `paid` flag cannot do that.
 - Raw webhook bodies are size limited. HMAC signatures and a five-minute timestamp tolerance are verified before parsing; event IDs are recorded for replay safety. Paid timestamps are preserved, and refunds never decrease when events arrive out of order. Test payments are labelled explicitly and do not set `paymentCollected:true`.
@@ -36,3 +36,11 @@ Primary implementation references:
 ## Checkout rejection support codes
 
 Stripe non-2xx replies now map to fixed support categories: STRIPE_AUTHENTICATION, STRIPE_PERMISSIONS, STRIPE_RATE_LIMIT, STRIPE_IDEMPOTENCY, STRIPE_ACCOUNT, STRIPE_REQUEST or STRIPE_PROVIDER. Configuration errors can include an exact allowlisted server-sent parameter name. The application never relays provider messages, arbitrary parameter strings, credential fragments, request IDs, log URLs, headers or raw response bodies. Readiness remains a local configuration/schema check and does not certify API-key validity. Rejected attempts retain the original immutable request and idempotency key; no automatic replacement session or key change is introduced.
+
+## Dashboard-managed payment methods
+
+New Checkout Session requests omit payment_method_types, as required by the current API. Stripe selects eligible enabled methods from the merchant's Dashboard. This does not enable methods, change the merchant account, activate live mode, add subscriptions or change USD prices. Delayed payments remain unpaid until a verified success event or server retrieval confirms payment.
+
+A previously persisted creating attempt is still retried with its original immutable body and idempotency key first. Only an explicit HTTP 400 invalid_request_error for payment_method_types, with the exact discontinued-parameter reason, can migrate a legacy card-only body. A lease- and generation-guarded update removes that field, updates the generation metadata and persists a fresh idempotency key before one replacement request. Known sessions, paid records, unknown network outcomes, other errors and attempts older than the existing safety window are not automatically replaced. Retries after an interrupted migration reuse the new saved key. A stale request cannot clear a newer creation lease.
+
+References: https://docs.stripe.com/payments/payment-methods/dynamic-payment-methods and https://docs.stripe.com/api/idempotent_requests .

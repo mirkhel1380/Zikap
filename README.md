@@ -74,7 +74,7 @@ The remote additive account schema and `/health` flag `customerAccounts:true` we
 
 ## Stripe checkout
 
-Accepted account projects can use one-time Stripe-hosted card checkout after the merchant configures STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET. Until then, no checkout is enabled. Server-controlled amounts, ownership checks, persisted idempotency, webhook signature verification, payment-status reconciliation, test/live labels and monotonic refund updates are implemented. Payment and specialist fulfillment remain separate. Financially linked orders are retained. The owner desk shows Stripe status and can reload saved requests. Thirty-two automated checks pass; browser UI verification used isolated fictional Stripe responses. No merchant test/live charge has been performed. Follow backend/STRIPE_SETUP.md; never paste secret values in chat or commit them.
+Accepted account projects can use one-time Stripe-hosted checkout using eligible Dashboard-enabled methods after the merchant configures STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET. Until then, no checkout is enabled. Server-controlled amounts, ownership checks, persisted idempotency, webhook signature verification, payment-status reconciliation, test/live labels and monotonic refund updates are implemented. Payment and specialist fulfillment remain separate. Financially linked orders are retained. The owner desk shows Stripe status and can reload saved requests. Thirty-two automated checks pass; browser UI verification used isolated fictional Stripe responses. No merchant test/live charge has been performed. Follow backend/STRIPE_SETUP.md; never paste secret values in chat or commit them.
 
 ## Customer project navigation
 
@@ -166,3 +166,7 @@ All fifteen public navigation headers share Services, Free tools, Resources, Pri
 The home and website-check pages use a layered animated source-HTML/browser/check illustration, explicitly labeled as illustrative. The previous numerical health demonstration and growth graph were removed from the home hero. Pause/resume, reduced-motion handling and offscreen pausing remain available. Public checker results still come from the existing endpoint.
 
 Browser QA verified desktop hero/menu layout, Services and Free tools disclosures, Escape, motion pause/resume, mobile navigation to Technical SEO, and a 375px body without horizontal overflow. Static checks verified public IDs, local assets and internal anchors. Original logo bytes were compared before/after. No backend, catalog price or payment configuration changed in this design update.
+
+## Checkout API compatibility
+
+New session creation now omits discontinued payment_method_types and uses Stripe Dashboard-managed eligible methods. Legacy pending attempts are retried unchanged first; only a precise unsupported-parameter 400 permits a lease-protected migration to a fresh generation and idempotency key. Existing sessions, successful or unknown outcomes, prices and test/live mode are preserved. The owner is testing the sandbox flow; live payments and the complete merchant-operated success/refund journey remain unverified. See backend/STRIPE_SETUP.md for the migration and safeguards.

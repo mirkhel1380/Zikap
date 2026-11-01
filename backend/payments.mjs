@@ -1,4 +1,4 @@
-// Stripe-hosted, one-time card checkout. No card details or keys go to the browser.
+// Stripe-hosted, one-time checkout with Dashboard-managed payment methods. No card details or keys go to the browser.
 import {prices,titles} from './catalog.mjs';
 const version='2026-10-28.endive';
 export const stripeConfigured=env=>typeof env.STRIPE_SECRET_KEY==='string'&&/^(sk|rk)_(test|live)_/.test(env.STRIPE_SECRET_KEY)&&typeof env.STRIPE_WEBHOOK_SECRET==='string'&&env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_');
@@ -43,7 +43,13 @@ async function stripe(env,path,method,params,idempotency,ApiError){
  const transport=typeof env.STRIPE_HTTP==='function'?env.STRIPE_HTTP:fetch;
  let response;try{response=await transport('https://api.stripe.com/v1'+path,{method,headers,body:params||undefined,signal:AbortSignal.timeout(15000)});}catch{throw new ApiError('Stripe could not be reached. No payment has been confirmed. Please try again.',503);}
  let data;try{data=await response.json();}catch{throw new ApiError('Stripe did not return a valid response. Please try again.',503);}
- if(!response.ok)throw new ApiError(stripeFailure(response.status,data),503);return data;
+ if(!response.ok){
+  const error=new ApiError(stripeFailure(response.status,data),503);
+  // An explicit validation rejection proves this legacy request created no session.
+  // Keep only a boolean internally; raw provider text must never leave this function.
+  error.legacyPaymentMethodRejected=response.status===400&&path==='/checkout/sessions'&&method==='POST'&&data?.error?.type==='invalid_request_error'&&data.error.param==='payment_method_types'&&typeof data.error.message==='string'&&data.error.message.startsWith('The `payment_method_types` parameter is no longer supported when creating a Checkout Session.');
+  throw error;
+ }return data;
 }
 function validSession(session,row,ApiError){
  if(typeof session.id!=='string'||!/^cs_[A-Za-z0-9_]{1,240}$/.test(session.id))throw new ApiError('Stripe returned an invalid checkout reference.',400);
@@ -59,7 +65,7 @@ async function markPaid(env,row,session,event,ApiError){
 }
 async function rowFor(env,id){return env.DB.prepare('SELECT * FROM order_payments WHERE order_id=?').bind(id).first();}
 function parameters(order,generation,origin){
- const p=new URLSearchParams({mode:'payment',client_reference_id:order.id,success_url:origin+'/account/?payment=return&order='+order.id+'#projects',cancel_url:origin+'/account/?payment=cancel&order='+order.id+'#projects','metadata[orderId]':order.id,'metadata[generation]':generation,'payment_intent_data[metadata][orderId]':order.id,'line_items[0][quantity]':'1','line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':String(prices[order.package_id]*100),'line_items[0][price_data][product_data][name]':'Zikap / '+titles[order.package_id],'payment_method_types[0]':'card','adaptive_pricing[enabled]':'false'});return p.toString();
+ const p=new URLSearchParams({mode:'payment',client_reference_id:order.id,success_url:origin+'/account/?payment=return&order='+order.id+'#projects',cancel_url:origin+'/account/?payment=cancel&order='+order.id+'#projects','metadata[orderId]':order.id,'metadata[generation]':generation,'payment_intent_data[metadata][orderId]':order.id,'line_items[0][quantity]':'1','line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':String(prices[order.package_id]*100),'line_items[0][price_data][product_data][name]':'Zikap / '+titles[order.package_id],'adaptive_pricing[enabled]':'false'});return p.toString();
 }
 export async function checkout(env,order,origin,ApiError){
  if(!await paymentsReady(env))throw new ApiError('Online payment is not configured yet. No payment was collected.',503);
@@ -84,16 +90,30 @@ export async function checkout(env,order,origin,ApiError){
  }
  if(!owned){
   if(now-row.started_at>=23*3600)throw new ApiError('Your earlier checkout needs owner verification before another payment can be opened.',409);
-  const lease=await env.DB.prepare("UPDATE order_payments SET lock_until=? WHERE order_id=? AND generation=? AND state='creating' AND lock_until<=?").bind(now+30,order.id,row.generation,now).run();if(!lease.meta.changes)throw new ApiError('Your checkout is being prepared. Please try again shortly.',409);
+  const lease=await env.DB.prepare("UPDATE order_payments SET lock_until=? WHERE order_id=? AND generation=? AND state='creating' AND lock_until<=?").bind(now+30,order.id,row.generation,now).run();if(!lease.meta.changes)throw new ApiError('Your checkout is being prepared. Please try again shortly.',409);row={...row,lock_until:now+30};
  }
  try{
-  const session=await stripe(env,'/checkout/sessions','POST',row.request_params,'zikap-checkout:'+order.id+':'+row.generation,ApiError);validSession(session,row,ApiError);
+  let session;
+  try{session=await stripe(env,'/checkout/sessions','POST',row.request_params,'zikap-checkout:'+order.id+':'+row.generation,ApiError);}
+  catch(error){
+   const nextParams=new URLSearchParams(row.request_params),legacyKeys=[...nextParams.keys()].filter(key=>/^payment_method_types(?:\[|$)/.test(key));
+   if(!error.legacyPaymentMethodRejected||legacyKeys.length!==1||legacyKeys[0]!=='payment_method_types[0]'||nextParams.get('payment_method_types[0]')!=='card'||row.session_id||row.payment_intent||row.paid_at)throw error;
+   const replacement=crypto.randomUUID(),retryNow=Math.floor(Date.now()/1000);nextParams.delete('payment_method_types[0]');nextParams.set('metadata[generation]',replacement);
+   // Never change parameters under an existing idempotency key. Rotate only after
+   // the exact unsupported-parameter 400, while still owning this creation lease.
+   const changed=await env.DB.prepare("UPDATE order_payments SET generation=?,request_params=?,started_at=?,lock_until=? WHERE order_id=? AND generation=? AND state='creating' AND session_id IS NULL AND payment_intent='' AND paid_at='' AND lock_until=? AND lock_until>?").bind(replacement,nextParams.toString(),retryNow,retryNow+30,order.id,row.generation,row.lock_until,retryNow).run();
+   if(!changed.meta.changes)throw new ApiError('Checkout changed while updating its payment settings. Refresh the project before trying again.',409);
+   row={...row,generation:replacement,request_params:nextParams.toString(),started_at:retryNow,lock_until:retryNow+30};
+   // At most one migration per call. A lost response retains this new key for retries.
+   session=await stripe(env,'/checkout/sessions','POST',row.request_params,'zikap-checkout:'+order.id+':'+row.generation,ApiError);
+  }
+  validSession(session,row,ApiError);
   if(session.payment_status==='paid'){await markPaid(env,row,session,null,ApiError);return{payment:summary(await rowFor(env,order.id),true)};}
   let url;try{url=new URL(session.url);}catch{throw new ApiError('Stripe checkout did not return a valid payment page.',503);}
   if(url.protocol!=='https:'||url.hostname!=='checkout.stripe.com'||url.username||url.password||session.status!=='open'||!Number.isInteger(session.expires_at))throw new ApiError('Stripe checkout did not return a valid payment page.',503);
   await env.DB.prepare("UPDATE order_payments SET state='pending',session_id=?,checkout_url=?,expires_at=?,lock_until=0 WHERE order_id=? AND generation=? AND state='creating'").bind(session.id,url.href,session.expires_at,order.id,row.generation).run();
   const saved=await rowFor(env,order.id);return saved.state==='paid'?{payment:summary(saved,true)}:{url:url.href,payment:summary(saved,true)};
- }catch(e){await env.DB.prepare("UPDATE order_payments SET lock_until=0 WHERE order_id=? AND generation=? AND state='creating'").bind(order.id,row.generation).run();throw e;}
+ }catch(e){await env.DB.prepare("UPDATE order_payments SET lock_until=0 WHERE order_id=? AND generation=? AND state='creating' AND lock_until=?").bind(order.id,row.generation,row.lock_until).run();throw e;}
 }
 export async function reconcilePayment(env,id,ApiError){
  const row=await rowFor(env,id);if(!row||row.state!=='pending'||!await paymentsReady(env))return;
