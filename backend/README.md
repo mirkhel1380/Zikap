@@ -32,6 +32,10 @@ Run these steps from `backend/` after signing into the business's Cloudflare acc
 
 `ALLOWED_ORIGIN` is the GitHub Pages origin, `https://mirkhel1380.github.io` (not its /Zikap path). Change it when the website origin changes. CORS is not authentication; the admin and receipt bearer keys provide access control.
 
+## Limited AI website reviews
+
+[AI_SETUP.md](AI_SETUP.md) describes private saved source-HTML checks, opt-in AI explanations, strict daily limits and the free-plan activation gate. AI is off until the owner verifies Workers Free; no live model call was made during release.
+
 ## Transactional email notifications
 
 [EMAIL_SETUP.md](EMAIL_SETUP.md) documents opt-in sending, four event templates, the durable outbox, retry limits and sender activation. No emails are sent with the default configuration. Email notifications do not verify account email addresses or provide password-reset email.

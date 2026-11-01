@@ -27,13 +27,14 @@
   for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('account-name').textContent='My account';$('account-avatar').textContent='Z';$('greeting').textContent='Welcome back.';$('profile-line').textContent='';$('nav-unread-badge').hidden=true;$('unread-count').textContent='0';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
   document.querySelectorAll('input[type=password]').forEach(input=>{input.value='';});$('app-status').textContent=message;authMode('login');
  }
+ document.addEventListener('zikap-account-expired',()=>clearAccount('Your session ended. Sign in to continue.'));
  function sessionError(e){if(e.status===401){clearAccount('Your session ended. Sign in to continue.');return true;}return false;}
  function showRecovery(code){
   recoveryCode=code;$('recovery-key').value=code;$('recovery-key').type='password';$('toggle-recovery').textContent='Show recovery code';$('toggle-recovery').setAttribute('aria-pressed','false');$('recovery-saved').checked=false;$('close-recovery').disabled=true;$('recovery-message').textContent='';$('recovery-box').hidden=false;reveal($('recovery-box'));
  }
  async function enter(data){
   document.body.classList.add('signed-in');user=data.user;epoch++;pending=null;$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
-  $('account-name').textContent=user.name;$('account-avatar').textContent=user.name.trim().slice(0,1).toUpperCase();$('greeting').textContent='Welcome back, '+user.name.split(/\s+/)[0]+'.';setView();$('profile-line').textContent=user.name+' · '+user.email;
+  $('account-name').textContent=user.name;$('account-avatar').textContent=user.name.trim().slice(0,1).toUpperCase();$('greeting').textContent='Welcome back, '+user.name.split(/\s+/)[0]+'.';setView();document.dispatchEvent(new Event('zikap-session-ready'));$('profile-line').textContent=user.name+' · '+user.email;
   if(data.recoveryKey)showRecovery(data.recoveryKey);await loadProjects();
   const params=new URLSearchParams(location.search),id=params.get('order');
   if(params.get('payment')==='return'&&/^[a-f0-9-]{36}$/.test(id||'')){try{await api('/orders/'+id+'/payment-status','POST',{});await loadProjects();await openProject(id);}catch(e){$('projects-message').textContent='Check your project payment status. '+errorText(e);}}
@@ -64,7 +65,7 @@
  $('download-recovery').addEventListener('click',()=>{if(!recoveryCode)return;download('zikap-account-recovery.txt','Zikap account recovery\nEmail: '+user.email+'\nRecovery code: '+recoveryCode+'\nSign in: https://zikap.m-mirkhel20.workers.dev/account/\n\nKeep this file private. This code can replace your password. Only the latest code works.');$('recovery-message').textContent='Download requested. Check your browser downloads and keep the file private.';});
  $('recovery-saved').addEventListener('change',()=>{$('close-recovery').disabled=!$('recovery-saved').checked;});
  $('close-recovery').addEventListener('click',()=>{if(!$('recovery-saved').checked)return;recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;setView('overview');$('overview').focus();});
- const views={performance:'Search performance',overview:'Overview',projects:'My projects',reports:'Report library','new-project':'New request','free-tools':'SEO tools','link-project':'Link a receipt','account-security':'Account & security'};
+ const views={'ai-review':'AI website review',performance:'Search performance',overview:'Overview',projects:'My projects',reports:'Report library','new-project':'New request','free-tools':'SEO tools','link-project':'Link a receipt','account-security':'Account & security'};
  function setView(preferred){
   if(!user)return;const key=preferred||location.hash.slice(1),view=Object.hasOwn(views,key)?key:'overview';
   document.querySelectorAll('.workspace-view').forEach(section=>{section.hidden=section.id!==view;});

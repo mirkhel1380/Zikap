@@ -1,3 +1,4 @@
+import {aiReadiness} from './ai-reviews.mjs';
 import {emailReadiness,dispatchNotifications} from './notifications.mjs';
 import {auditRoute} from './website-audit.mjs';
 import {historyReady,editVersion,projectHistory} from './history.mjs';
@@ -75,8 +76,8 @@ export default {async scheduled(controller,env,ctx){
       }
       const ready=Object.values(checks).every(value=>value===true);
       const adminSecretStatus=typeof env.ADMIN_TOKEN!=='string'||env.ADMIN_TOKEN.length===0?'missing':env.ADMIN_TOKEN.length<32?'too_short':'configured';
-      const paymentSetup=await paymentReadiness(env),emailNotifications=await emailReadiness(env);
-      return respond({service:'zikap-orders-api',version:'runtime-checks-3',ready,checks,adminSecretStatus,orders:ready,websiteAudit:ready&&typeof HTMLRewriter==='function',orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:ready&&typeof HTMLRewriter==='function',websiteAuditScope:'up to 3 public source-HTML pages',payments:ready&&paymentSetup.ready,paymentChecks:paymentSetup.checks,emailNotifications},ready?200:503);
+      const paymentSetup=await paymentReadiness(env),emailNotifications=await emailReadiness(env),aiReviews=await aiReadiness(env);
+      return respond({service:'zikap-orders-api',version:'runtime-checks-3',ready,checks,adminSecretStatus,orders:ready,websiteAudit:ready&&typeof HTMLRewriter==='function',orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:ready&&typeof HTMLRewriter==='function',websiteAuditScope:'up to 3 public source-HTML pages',payments:ready&&paymentSetup.ready,paymentChecks:paymentSetup.checks,emailNotifications,aiReviews},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
     if(path==='/website-audit')return respond(await auditRoute(req,env,{ApiError,hash,jsonBody,rate}));

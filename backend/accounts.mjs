@@ -1,3 +1,4 @@
+import {aiReviewRoute} from './ai-reviews.mjs';
 // First-party customer sessions. No email delivery or password-reset email service.
 import {paymentsReady,stripeConfigured,paymentSummaries,checkout,reconcilePayment} from './payments.mjs';
 import {actionsReady,projectActions} from './actions.mjs';
@@ -92,6 +93,7 @@ export async function accountRoute(req,env,h){
   ]);
   return result({user:publicUser(user),recoveryKey},200,await startSession(user));
  }
+ if(path==='/account-api/ai-checks'||path.startsWith('/account-api/ai-checks/'))return result(await aiReviewRoute(req,env,user,h));
  if(path==='/account-api/session'&&req.method==='GET')return result({user:publicUser(user)});
  if(path==='/account-api/logout'&&req.method==='POST'){
   await env.DB.prepare('DELETE FROM customer_sessions WHERE token_hash=?').bind(user.token_hash).run();return result({signedOut:true},200,{'Set-Cookie':cookie('',0)});
