@@ -1,0 +1,29 @@
+#report-print-sheet{display:none}
+.report-brand img{width:132px;height:auto;flex:0 0 auto}
+/* Report screen layout; the source text remains available separately. */
+.report-intro{color:#64748b;font-size:12px;margin:18px 0 28px}.report-content{min-width:0}.report-section-heading{font-size:19px;line-height:1.35;letter-spacing:-.015em;color:#14305c;margin:30px 0 12px;border-bottom:1px solid #dce5f2;padding-bottom:9px;overflow-wrap:anywhere}.report-copy{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.8;color:#26364c;margin:0 0 15px;background:none;border:0;padding:0;max-width:100%}.reader-paper{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:600;white-space:nowrap}.reader-paper select{min-height:38px;width:110px;margin:0;font-size:12px;padding:8px}.reader-toolbar{flex-wrap:wrap}.reader-toolbar .actions{flex-wrap:wrap}.report-metadata dd{overflow-wrap:anywhere;min-width:0}#report-document{min-width:0}@media(max-width:600px){.reader-paper{width:100%;justify-content:space-between}.reader-toolbar .actions{width:100%}.report-section-heading{font-size:17px}}
+@media print{
+ @page zikapA4{size:A4;margin:20mm 17mm 22mm;@top-left{content:'ZIKAP / SPECIALIST REPORT';font-family:Arial,sans-serif;font-size:8pt;color:#64748b}@bottom-left{content:'Private customer report';font-family:Arial,sans-serif;font-size:8pt;color:#64748b}@bottom-right{content:'Page ' counter(page) ' of ' counter(pages);font-family:Arial,sans-serif;font-size:8pt;color:#64748b}}
+ @page zikapLetter{size:Letter;margin:20mm 17mm 22mm;@top-left{content:'ZIKAP / SPECIALIST REPORT';font-family:Arial,sans-serif;font-size:8pt;color:#64748b}@bottom-left{content:'Private customer report';font-family:Arial,sans-serif;font-size:8pt;color:#64748b}@bottom-right{content:'Page ' counter(page) ' of ' counter(pages);font-family:Arial,sans-serif;font-size:8pt;color:#64748b}}
+ body.report-printing{page:zikapA4;margin:0!important;padding:0!important;color:#172238!important;font-family:Arial,sans-serif!important;background:#fff!important}
+ body.report-printing[data-report-paper=letter]{page:zikapLetter}
+ body.report-printing>*:not(#report-print-sheet){display:none!important}
+ body.report-printing #report-reader{display:none!important}
+ body.report-printing #report-print-sheet{display:block!important;position:static!important;margin:0!important;padding:0!important;width:auto!important;max-width:none!important;height:auto!important;overflow:visible!important;color:#172238!important;background:#fff!important}
+
+ body.report-printing #report-reader::backdrop{display:none!important}
+ body.report-printing .reader-toolbar,body.report-printing #reader-status{display:none!important}
+ body.report-printing :is(#report-document,#report-print-document){padding:0!important;margin:0!important;width:auto!important;max-width:none!important;overflow:visible!important}
+ body.report-printing :is(#report-document,#report-print-document) h1{color:#14305c;font-size:25pt;line-height:1.15;margin:12mm 0 7mm;break-after:avoid}
+ body.report-printing .report-brand img{width:35mm;height:auto}
+ body.report-printing .report-brand .eyebrow{color:#1d4ed8}
+ body.report-printing .report-brand{break-inside:avoid;break-after:avoid}
+ body.report-printing .report-metadata{display:block;font-size:9pt;padding:4mm 0;break-inside:avoid;margin-bottom:4mm}
+ body.report-printing .report-metadata dt{font-weight:bold;color:#475569;margin-top:2mm;break-after:avoid}
+ body.report-printing .report-metadata dd{margin:0 0 2mm;line-height:1.45;overflow-wrap:anywhere}
+ body.report-printing .report-intro{font-size:8.5pt;line-height:1.5;color:#475569;margin:4mm 0 6mm;orphans:2;widows:2}
+ body.report-printing .report-section-heading{font-size:13pt;line-height:1.35;margin:6mm 0 3mm;padding:0 0 2mm;break-inside:avoid;break-after:avoid;page-break-after:avoid}
+ body.report-printing .report-content{overflow:visible!important}
+ body.report-printing .report-copy{font-size:10.5pt;line-height:1.6;margin:0 0 4mm;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;orphans:3;widows:3;color:#172238}
+ body.report-printing .report-document-footer{font-size:8pt;line-height:1.5;color:#475569;break-inside:avoid;margin-top:7mm}
+}

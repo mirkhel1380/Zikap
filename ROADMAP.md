@@ -19,6 +19,8 @@ Reviewed November 7, 2026 against repository main. English UI, original logo, Gi
 
 - The account export release passed 131 tests, including user/session isolation, pagination, expiry, credential redaction and deployment checks. Customers can now prepare a private JSON download in Account & security after re-entering their password. Short-lived, hashed, session-bound authorizations allow paginated reads of profile, linked projects/reports/conversations/actions/payment summaries and active saved checks. Owner-only work and credentials are excluded. Account deletion and general retention remain unimplemented pending policy decisions.
 
+- The customer report reader now formats plain-text headings without interpreting HTML. It supports A4/Letter printing through a report-only print copy, with wrapping, heading break protection and supported-browser page counters. PDF pagination was checked with isolated browser-rendered fixtures in a paged-media engine; the OS/browser Save as PDF dialog is still user-controlled. See backend/REPORT_PRINT_QA.md.
+
 ## Prepared for owner review
 
 `policy-review.html` links draft service terms, a privacy notice and cancellation/refund proposals. They are visibly marked not yet effective, carry noindex/nofollow and are not in the sitemap or public navigation/footer. They do not change checkout acknowledgements or create a new refund entitlement.
@@ -39,7 +41,6 @@ Before these become customer policies, confirm:
 ## Later implementation priorities
 
 - Public support/privacy request handling, account-deletion operations and defined retention controls.
-- Genuine print/PDF export pagination verification.
 - Search Console connection, live keyword/rank data, CMS publishing and subscriptions only after their scope, permissions, costs and customer terms are explicitly defined.
 
 No new production accounts, project messages, payments, refunds or emails should be generated merely to demonstrate these features without the owner’s specific authorization. Recovery codes and payment-linked record protections remain in place.

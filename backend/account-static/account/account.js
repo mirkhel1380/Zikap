@@ -22,7 +22,7 @@
   $('show-login').setAttribute('aria-pressed',String(mode==='login'));$('show-register').setAttribute('aria-pressed',String(mode==='register'));
  }
  function clearAccount(message){
-  document.title='My account | Zikap';closeReport();$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
+  closeReport();document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
   document.body.classList.remove('signed-in','sidebar-open');document.dispatchEvent(new Event('zikap-session-cleared'));user=null;epoch++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
   for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('account-name').textContent='My account';$('account-avatar').textContent='Z';$('greeting').textContent='Welcome back.';$('profile-line').textContent='';$('nav-unread-badge').hidden=true;$('unread-count').textContent='0';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
   document.querySelectorAll('input[type=password]').forEach(input=>{input.value='';});$('app-status').textContent=message;authMode('login');
@@ -96,22 +96,8 @@
   const unreadKnown=all.every(o=>Number.isInteger(o.unreadMessages)),unreadTotal=all.reduce((n,o)=>n+(o.unreadMessages||0),0);$('unread-count').textContent=unreadKnown?String(unreadTotal):'—';$('nav-unread-badge').textContent=String(unreadTotal);$('nav-unread-badge').hidden=!unreadTotal;const percentage=all.length?Math.round(reports.length/all.length*100):0;$('report-percentage').textContent=percentage+'%';$('report-ring').style.setProperty('--report-percent',percentage+'%');
   const breakdown=$('status-breakdown');breakdown.replaceChildren();for(const [key,label]of [['requested','Awaiting review'],['active','Accepted / in progress'],['delivered','Delivered'],['declined','Declined']]){const count=all.filter(o=>key==='active'?['accepted','in_progress','revision_requested'].includes(o.status):o.status===key).length,row=node('div','','breakdown-row');row.append(node('span',label),node('strong',String(count)));breakdown.append(row);}
  }
- function closeReport(){
-  $('reader-status').textContent='';const reader=$('report-reader');if(reader.open)reader.close();$('report-document').replaceChildren();document.body.classList.remove('report-printing');
- }
- function readReport(order){
-  if(!user||!order.report)return;$('reader-status').textContent='';const documentBox=$('report-document');documentBox.replaceChildren();
-  const brand=node('div','','report-brand');const logo=document.createElement('img');logo.src='/account/zikap-logo.svg';logo.alt='Zikap';logo.width=132;logo.height=36;brand.append(logo,node('span','SPECIALIST REPORT','eyebrow'));
-  documentBox.append(brand,node('h1',order.packageTitle||names[order.packageId]||order.packageId));
-  const meta=node('dl','','report-metadata');for(const [label,value] of [['Website',order.website],['Project ID',order.id],['Project status',states[order.status]||order.status],['Project updated',new Date(order.updatedAt).toLocaleString()]])meta.append(node('dt',label),node('dd',value));
-  documentBox.append(meta,node('p','The saved report below is shown as supplied by your specialist.','tiny'),node('pre',order.report,'report-body'),node('p','Zikap / Private customer report','report-document-footer'));
-  $('reader-download').onclick=()=>download('zikap-report-'+order.id+'.txt',order.report);$('report-reader').showModal();$('reader-close').focus();
- }
- $('reader-close').addEventListener('click',closeReport);
- $('report-reader').addEventListener('close',()=>{$('report-document').replaceChildren();$('reader-download').onclick=null;$('reader-status').textContent='';document.body.classList.remove('report-printing');});
- $('reader-print').addEventListener('click',()=>{$('reader-status').textContent='Print requested. If no dialog opens, keep this report open and choose Print from your browser menu. PDF saving depends on your browser.';document.body.classList.add('report-printing');try{window.print();}catch{document.body.classList.remove('report-printing');$('reader-status').textContent='Printing could not open. Keep this report open and choose Print from your browser menu, or download the text instead.';}});
- addEventListener('beforeprint',()=>{if($('report-reader').open)document.body.classList.add('report-printing');});
- addEventListener('afterprint',()=>document.body.classList.remove('report-printing'));
+ function closeReport(){window.ZikapReports.close();}
+ function readReport(order){if(!user||!order.report)return;window.ZikapReports.open({...order,packageTitle:order.packageTitle||names[order.packageId]||order.packageId},{status:states[order.status]||order.status});}
  function renderReports(){
   const all=[...projects.values()].filter(o=>o.report),query=$('report-search').value.trim().toLowerCase(),packageId=$('report-package').value,sort=$('report-sort').value;
   const visible=all.filter(o=>(packageId==='all'||o.packageId===packageId)&&[o.website,names[o.packageId],o.id,o.topic].join(' ').toLowerCase().includes(query));
