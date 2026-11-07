@@ -31,7 +31,7 @@ Before these become customer policies, confirm:
 
 1. Refund approach approved by the owner: full refund before work starts; refund of unperformed work after starting; correction first, followed by partial/full refund review for unresolved delivery issues. A dated customer-visible scope/start update and In progress status document the work stage. No automatic refund calculation or financial action was added.
 2. Highlink LLC is confirmed by the owner as the operator of Zikap. The owner confirmed registration in Texas, United States. A business contact address and public support/privacy/refund contact remain to be provided; no address, governing law or email is assumed.
-3. Retention periods for account/project/payment information and necessary exceptions. The current code has no general automatic deletion period.
+3. Retention principles are owner-approved: necessity-based account/project retention, manual review of privacy/deletion requests and separate assessment of necessary payment/accounting/dispute records. No fixed blanket period or general automated deletion is introduced. Operational capability and actual contact readiness still need review before the full policy set becomes effective.
 
 ## Activation dependencies deferred by the owner
 
@@ -78,3 +78,7 @@ At the owner’s subsequent explicit request, visible mailbox-activation warning
 ## Public address preference
 
 The owner chose to omit a public street address. The draft policy pages retain Highlink LLC, Texas, United States and the selected support/privacy addresses, and no longer list supplying a street address as a policy-preparation task. No physical operating location or governing law is inferred from the Texas registration. This preference does not certify jurisdiction-wide legal compliance. Retention/data-request decisions and actual mailbox readiness remain outstanding internally.
+
+## Retention principles approved
+
+The owner approved necessity-based account/project retention, the existing seven-day customer-access expiry for saved checks, manual privacy/deletion request review and separate assessment of necessary financial records. The privacy draft now describes those principles, verified-request handling, explanations for retained records and the limits of current operations. No account-deletion control, automatic purge, new legal deadline or production data deletion was added. The full policy set remains in draft for operational review, with domain/mailbox readiness still unverified internally.
