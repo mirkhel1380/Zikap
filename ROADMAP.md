@@ -13,6 +13,8 @@ Reviewed November 7, 2026 against repository main. English UI, original logo, Gi
 - Durable transactional email notifications and four templates are deployed. Sending was last observed off, pending the owner’s domain, verified sender, provider key and approved delivery check.
 - Private saved website checks and limited AI explanations are deployed. AI was last observed off with its binding/schema ready, awaiting explicit confirmation of Workers Free. Limits are two attempts per customer per UTC day and twenty shared attempts. No production inference was performed during release.
 
+- Owner-only project review checklists and internal notes now persist independently in D1, with stale-write protection, private draft downloads and unsaved-edit warnings. They are excluded from customer payloads, reports, messages and order edit history.
+
 ## Prepared for owner review
 
 `policy-review.html` links draft service terms, a privacy notice and cancellation/refund proposals. They are visibly marked not yet effective, carry noindex/nofollow and are not in the sitemap or public navigation/footer. They do not change checkout acknowledgements or create a new refund entitlement.
@@ -32,7 +34,6 @@ Before these become customer policies, confirm:
 
 ## Later implementation priorities
 
-- Persisted owner review checklists and internal notes, clearly separated from customer-visible updates.
 - Editable service catalog with consistent public/intake/checkout prices and unchanged historical order prices.
 - Public support/privacy request handling, appropriate account-data export/deletion operations and defined retention controls.
 - Genuine print/PDF export pagination verification.

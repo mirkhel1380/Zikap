@@ -61,3 +61,9 @@ Owner-authenticated history list/snapshot reads are available through the existi
 Saved report history appears within a selected order. An older report can be read, downloaded or loaded into the local report draft. This preserves current status, owner note and formal revision state. Review and explicit saving are required to publish restored report text. Conflict messages preserve the unsaved draft and offer reopening the latest saved order; download the draft before replacing it.
 
 73 automated tests pass, including report snapshots, literal-text preservation, tied timestamps, stale versions, customer revision invalidation, unchanged saves, rolling retention, migration replay, cascades, missing-schema compatibility and write-acknowledgement isolation. Browser QA was attempted but the connection timed out; this update's visual/mobile interaction verification remains incomplete. No production test orders, customer messages, owner credentials or report changes were created by the agent. See `ROADMAP.md` at the repository root for remaining priorities and intentionally deferred integrations.
+
+## Private project workspace
+
+Open Requests, then an order, to use **Private project workspace**. Package review steps and up to 4,000 characters of internal notes are saved with **Save private work**. They are stored in `owner_project_work` (migration 0011), independently of customer-visible status, update notes, reports and report history. Saving a customer update does not save the private draft, and saving private work sends no customer update or email.
+
+Only authenticated same-origin administration sessions can use `/admin-api/projects/:id/private-work`. Reads and writes fail closed if its schema is missing. Writes require the last saved private version; a conflict preserves the draft for download before loading the latest saved version. Deleting an order cascades its private workspace. Private notes are not a password or credential store.
