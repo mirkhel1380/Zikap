@@ -112,3 +112,7 @@ Validation: account.js syntax passed. Actual customer assets were exercised with
 ## Request form protection and session cleanup — November 7, 2026
 
 Added visible in-page request draft state, confirmed Clear form and unsent-request sign-out warnings. Submissions lock input controls, retain failed request details/retry identity, and ignore responses from a cleared account session. Sign-out/expiry clears request and receipt forms; asynchronous receipt-file reads are scoped to the active account/selection. There is no persistent browser draft storage or automatic project submission. Syntax, ten account/journey tests and isolated desktop/mobile flow checks passed. See backend/REQUEST_DRAFT_QA.md for exact checks and native page-leave/file-read verification limits. Domain/email remains deferred.
+
+## Customer Payments workspace — November 7, 2026
+
+Customers now have a dedicated Payments view for their own saved per-project payment/refund records, with explicit test/live labels, saved amounts, read-only status, pagination, local search and mode filtering. Unavailable data is distinguished from no records; previous results survive refresh failures and cleared sessions reject late responses. No provider financial action, recurring billing or tax invoice is introduced. All 159 backend tests and isolated desktop/mobile checks passed; see backend/CUSTOMER_PAYMENTS.md. Domain/email, final policy publication/operational review and observation of a genuine customer purchase remain outstanding.

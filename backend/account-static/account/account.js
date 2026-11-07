@@ -17,6 +17,7 @@
   if(!response.ok){const e=new Error(data.error||'The account service is unavailable.');e.status=response.status;throw e;}return data;
  }
  const support=window.ZikapSupport.mount($('customer-support'),{role:'customer',api:(suffix,method,body)=>api('/support'+suffix,method,body),onError:sessionError});
+ const billing=window.ZikapPayments.mount($('customer-payments'),{api,openProject,onError:sessionError});
  function errorText(e){return e.name==='TimeoutError'?'The request timed out. Please try again.':e.message||'Could not connect. Please try again.';}
  function hasRequestDraft(){return !!user&&(['website','pages','topic','market','goals'].some(key=>$('project-'+key).value.trim())||$('project-package').value!==requestBaseline.packageId||$('project-language').value!==requestBaseline.language||$('project-consent').checked);}
  function updateRequestDraft(){
@@ -34,7 +35,7 @@
   $('show-login').setAttribute('aria-pressed',String(mode==='login'));$('show-register').setAttribute('aria-pressed',String(mode==='register'));
  }
  function clearAccount(message){
-  support.clear();closeReport();$('getting-started').hidden=true;document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
+  support.clear();billing.clear();closeReport();$('getting-started').hidden=true;document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
   document.body.classList.remove('signed-in','sidebar-open');document.dispatchEvent(new Event('zikap-session-cleared'));user=null;epoch++;receiptReadVersion++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
   for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('account-name').textContent='My account';$('account-avatar').textContent='Z';$('greeting').textContent='Welcome back.';$('profile-line').textContent='';$('nav-unread-badge').hidden=true;$('unread-count').textContent='0';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
   requestBusy(false);resetRequestForm();$('project-message').textContent='';$('link-form').reset();$('link-message').textContent='';
@@ -46,7 +47,7 @@
   recoveryCode=code;$('recovery-key').value=code;$('recovery-key').type='password';$('toggle-recovery').textContent='Show recovery code';$('toggle-recovery').setAttribute('aria-pressed','false');$('recovery-saved').checked=false;$('close-recovery').disabled=true;$('recovery-message').textContent='';$('recovery-box').hidden=false;reveal($('recovery-box'));
  }
  async function enter(data){
-  document.body.classList.add('signed-in');user=data.user;epoch++;pending=null;$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
+  document.body.classList.add('signed-in');user=data.user;epoch++;pending=null;billing.clear();$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
   $('account-name').textContent=user.name;$('account-avatar').textContent=user.name.trim().slice(0,1).toUpperCase();$('greeting').textContent='Welcome back, '+user.name.split(/\s+/)[0]+'.';setView();updateRequestDraft();document.dispatchEvent(new Event('zikap-session-ready'));$('profile-line').textContent=user.name+' · '+user.email;
   if(data.recoveryKey)showRecovery(data.recoveryKey);await loadProjects();
   const params=new URLSearchParams(location.search),id=params.get('order');
@@ -81,12 +82,12 @@
  $('download-recovery').addEventListener('click',()=>{if(!recoveryCode)return;download('zikap-account-recovery.txt','Zikap account recovery\nEmail: '+user.email+'\nRecovery code: '+recoveryCode+'\nSign in: https://zikap.m-mirkhel20.workers.dev/account/\n\nKeep this file private. This code can replace your password. Only the latest code works.');$('recovery-message').textContent='Download requested. Check your browser downloads and keep the file private.';});
  $('recovery-saved').addEventListener('change',()=>{$('close-recovery').disabled=!$('recovery-saved').checked;});
  $('close-recovery').addEventListener('click',()=>{if(!$('recovery-saved').checked)return;recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;setView('overview');$('overview').focus();});
- const views={support:'Help & support','ai-review':'AI website review',performance:'Search performance',overview:'Overview',projects:'My projects',reports:'Report library','new-project':'New request','free-tools':'SEO tools','link-project':'Link a receipt','account-security':'Account & security'};
+ const views={payments:'Payments',support:'Help & support','ai-review':'AI website review',performance:'Search performance',overview:'Overview',projects:'My projects',reports:'Report library','new-project':'New request','free-tools':'SEO tools','link-project':'Link a receipt','account-security':'Account & security'};
  function setView(preferred){
   if(!user)return;const key=preferred||location.hash.slice(1),view=Object.hasOwn(views,key)?key:'overview';
   document.querySelectorAll('.workspace-view').forEach(section=>{section.hidden=section.id!==view;});
   document.querySelectorAll('[data-view]').forEach(link=>{if(link.dataset.view===view)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
-  if(view==='support')support.ensureLoaded();
+  if(view==='support')support.ensureLoaded();if(view==='payments')billing.ensureLoaded();
   if(preferred)history.replaceState(null,'','#'+view);$('view-title').textContent=views[view];document.title=views[view]+' | Zikap';document.body.classList.remove('sidebar-open');$('workspace-menu').setAttribute('aria-expanded','false');
  }
  addEventListener('hashchange',()=>{setView();if(user){const key=location.hash.slice(1);if(Object.hasOwn(views,key))$(key).focus({preventScroll:true});}});

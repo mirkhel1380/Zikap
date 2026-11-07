@@ -1,5 +1,6 @@
 import {supportRoute} from './support.mjs';
 import {customerActivity} from './history.mjs';
+import {customerPayments} from './customer-payments.mjs';
 import {customerExport} from './customer-export.mjs';
 import {quoteOrder,snapshotStatement,orderSnapshot,orderSnapshots} from './catalog.mjs';
 import {aiReviewRoute} from './ai-reviews.mjs';
@@ -81,6 +82,7 @@ export async function accountRoute(req,env,h){
   return result({user:publicUser(user),recoveryKey:newCode},200,await startSession(user));
  }
  const user=await session();
+ if(path==='/account-api/payments'){await rate(req,env,'account-read',240);return result(await customerPayments(req,env,user,ApiError));}
  if(path==='/account-api/support'||path.startsWith('/account-api/support/'))return result(await supportRoute(req,env,user,'customer',h));
  if(path.startsWith('/account-api/data-export'))return result(await customerExport(req,env,user,h,async value=>{const current=passwordOf(value),full=await env.DB.prepare('SELECT password_hash,password_salt FROM customer_users WHERE id=?').bind(user.id).first();if(!full||!equal(await passwordHash(current,full.password_salt),full.password_hash))throw new ApiError('Your current password is incorrect.',403);}));
  if(['/account-api/password','/account-api/recovery-code'].includes(path)&&req.method==='POST'){

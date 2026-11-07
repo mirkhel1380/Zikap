@@ -159,3 +159,44 @@ test('customer activity is bounded metadata, authenticated and isolated from oth
  assert.equal((await call(path,'GET',undefined,customer)).status,503);
  assert.equal((await call('/account-api/orders/'+id,'GET',undefined,customer)).status,200);
 });
+
+function addCustomerPaymentFixture(db,userId,id,{state='paid',refund=0,testMode=0,startedAt=1770000000}={}){
+ const date='2026-11-01T09:00:00.000Z';
+ db.prepare('INSERT INTO orders(id,token_hash,created_at,updated_at,package_id,price_usd,name,email,website,pages,topic,language,market,goals) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(id,'PRIVATE_TOKEN_FIXTURE',date,date,'audit',999,'Fixture','fixture@example.test','https://example.com/','[]','','English','Fixture','Isolated payment history.');
+ db.prepare('INSERT INTO customer_order_links(order_id,user_id) VALUES(?,?)').run(id,userId);
+ db.prepare('INSERT INTO order_payments(order_id,generation,state,amount_cents,test_mode,request_params,started_at,paid_at,refunded_cents,session_id,checkout_url,payment_intent) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(id,'PRIVATE_PROVIDER_GENERATION',state,2900,testMode,'PRIVATE_PROVIDER_PARAMETERS',startedAt,state==='paid'?date:'',refund,'PRIVATE_PROVIDER_SESSION_'+id,'https://checkout.stripe.com/PRIVATE_PROVIDER_LINK','PRIVATE_PROVIDER_INTENT');
+}
+
+test('customer payment records are owned, paginated and redacted, with saved amounts and explicit test/refund states',async t=>{
+ const f=fixture();t.after(()=>f.db.close());let providerCalls=0;f.env.STRIPE_HTTP=async()=>{providerCalls++;throw new Error('Provider calls are not allowed for history');};
+ const call=(p,m,b,c,env=f.env)=>request(worker,env,'https://customer.example',p,m,b,c);
+ const register=async email=>(await call('/account-api/register','POST',{name:'Payment fixture',email,password:'Payment-fixture-password-2026',consent:true})).cookie;
+ const customer=await register('payments@example.test'),other=await register('payments-other@example.test');
+ const ownId=f.db.prepare('SELECT id FROM customer_users WHERE email=?').get('payments@example.test').id,otherId=f.db.prepare('SELECT id FROM customer_users WHERE email=?').get('payments-other@example.test').id;
+ const ids=[];for(let i=1;i<=32;i++){const id='00000000-0000-4000-8000-'+String(i).padStart(12,'0');ids.push(id);addCustomerPaymentFixture(f.db,ownId,id,{state:i===4?'pending':i===5?'expired':'paid',refund:i===2?500:i===3?2900:0,testMode:i%2});}
+ f.db.prepare('INSERT INTO order_package_snapshots(order_id,title,description,price_usd,catalog_version) VALUES(?,?,?,?,?)').run(ids[0],'Saved renamed service','Saved scope',29,1);
+ const otherOrder=crypto.randomUUID();addCustomerPaymentFixture(f.db,otherId,otherOrder);
+ const first=await call('/account-api/payments','GET',undefined,customer);assert.equal(first.status,200);assert.equal(first.body.payments.length,30);assert.ok(first.body.next);
+ const second=await call('/account-api/payments?before='+encodeURIComponent(first.body.next),'GET',undefined,customer);assert.equal(second.status,200);assert.equal(second.body.payments.length,2);assert.equal(second.body.next,null);
+ const all=[...first.body.payments,...second.body.payments];assert.equal(new Set(all.map(x=>x.orderId)).size,32);assert.deepEqual(all.map(x=>x.orderId),ids.toReversed());
+ for(const p of all)assert.deepEqual(Object.keys(p).sort(),['amountCents','currency','orderId','packageId','packageTitle','paidAt','refundedCents','startedAt','status','testMode','website']);
+ const byId=new Map(all.map(p=>[p.orderId,p]));assert.equal(byId.get(ids[0]).packageTitle,'Saved renamed service');assert.equal(byId.get(ids[0]).amountCents,2900);assert.equal(byId.get(ids[0]).testMode,true);
+ assert.equal(byId.get(ids[1]).status,'partially_refunded');assert.equal(byId.get(ids[1]).refundedCents,500);assert.equal(byId.get(ids[1]).testMode,false);
+ assert.equal(byId.get(ids[2]).status,'refunded');assert.equal(byId.get(ids[3]).status,'pending');assert.equal(byId.get(ids[4]).status,'expired');
+ assert.equal(JSON.stringify(first.body).includes('PRIVATE_'),false);
+ const isolated=await call('/account-api/payments','GET',undefined,other);assert.deepEqual(isolated.body.payments.map(p=>p.orderId),[otherOrder]);
+ assert.equal((await call('/account-api/payments')).status,401);
+ assert.equal((await call('/account-api/payments','POST',{},customer)).status,405);
+ assert.equal((await call('/account-api/payments?before=bad','GET',undefined,customer)).status,400);
+ const offlineKeys={...f.env,STRIPE_SECRET_KEY:undefined,STRIPE_WEBHOOK_SECRET:undefined};assert.equal((await call('/account-api/payments','GET',undefined,customer,offlineKeys)).status,200);assert.equal(providerCalls,0);
+});
+
+test('customer payment history distinguishes no records from unavailable or inconsistent payment data',async t=>{
+ const f=fixture();t.after(()=>f.db.close());const call=(p,m,b,c)=>request(worker,f.env,'https://customer.example',p,m,b,c);
+ const registered=await call('/account-api/register','POST',{name:'Payment errors fixture',email:'payment-errors@example.test',password:'Payment-errors-fixture-2026',consent:true}),cookie=registered.cookie;
+ const empty=await call('/account-api/payments','GET',undefined,cookie);assert.equal(empty.status,200);assert.deepEqual(empty.body.payments,[]);assert.equal(empty.body.next,null);
+ const userId=f.db.prepare('SELECT id FROM customer_users WHERE email=?').get('payment-errors@example.test').id,id=crypto.randomUUID();addCustomerPaymentFixture(f.db,userId,id,{refund:3000});
+ const invalid=await call('/account-api/payments','GET',undefined,cookie);assert.equal(invalid.status,503);assert.equal(JSON.stringify(invalid.body).includes('PRIVATE_'),false);
+ f.db.prepare('UPDATE order_payments SET refunded_cents=0 WHERE order_id=?').run(id);f.db.exec('DROP TABLE order_payments');
+ const unavailable=await call('/account-api/payments','GET',undefined,cookie);assert.equal(unavailable.status,503);assert.match(unavailable.body.error,/temporarily unavailable/);assert.equal('payments' in unavailable.body,false);
+});
