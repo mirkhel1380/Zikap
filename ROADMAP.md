@@ -54,3 +54,7 @@ System settings includes real UTC aggregate usage, remaining application attempt
 ## Customer AI guidance completed
 
 Customer availability now distinguishes personal/shared quota exhaustion, owner pause and unavailable status, with a manual availability refresh and explicit reasons for disabled generation. Sharing consent resets when switching saved checks. Cached suggestions remain readable/downloadable while new generation is paused. Verified with isolated customer UI fixtures; no new live inference was performed.
+
+## Source findings downloads completed
+
+Customers can download a selected saved check as plain text, including source evidence, sampled/unchecked pages, scope, limitations and expiry. This uses no AI quota and remains available with AI paused. Three formatter tests and a real isolated browser download passed; mobile layout was checked. No server-side reports, orders or live customer records were created by this release.
