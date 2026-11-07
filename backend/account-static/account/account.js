@@ -23,7 +23,7 @@
   $('show-login').setAttribute('aria-pressed',String(mode==='login'));$('show-register').setAttribute('aria-pressed',String(mode==='register'));
  }
  function clearAccount(message){
-  support.clear();closeReport();document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
+  support.clear();closeReport();$('getting-started').hidden=true;document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
   document.body.classList.remove('signed-in','sidebar-open');document.dispatchEvent(new Event('zikap-session-cleared'));user=null;epoch++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
   for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('account-name').textContent='My account';$('account-avatar').textContent='Z';$('greeting').textContent='Welcome back.';$('profile-line').textContent='';$('nav-unread-badge').hidden=true;$('unread-count').textContent='0';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
   document.querySelectorAll('input[type=password]').forEach(input=>{input.value='';});$('app-status').textContent=message;authMode('login');
@@ -89,7 +89,7 @@
   const open=button('View project');open.setAttribute('aria-label','View project for '+websiteLabel(order));open.addEventListener('click',()=>openProject(order.id));card.append(identity,status,meta,open);return card;
  }
  function renderOverview(){
-  const all=[...projects.values()],recent=$('recent-projects'),updates=$('recent-updates'),library=$('report-library');recent.replaceChildren();updates.replaceChildren();library.replaceChildren();
+  const all=[...projects.values()],recent=$('recent-projects'),updates=$('recent-updates'),library=$('report-library');$('getting-started').hidden=all.length>0||!!cursor;recent.replaceChildren();updates.replaceChildren();library.replaceChildren();
   all.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,4).forEach(order=>recent.append(projectRow(order,true)));
   const reports=all.filter(o=>o.report);renderReports();
   all.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,3).forEach(order=>{const item=node('article','','update-item'),dot=node('span','','update-dot'),content=node('div','');content.append(node('strong',websiteLabel(order)),node('p',order.note||nextStep(order)),node('small',(states[order.status]||order.status)+' · '+new Date(order.updatedAt).toLocaleDateString()));item.append(dot,content);updates.append(item);});

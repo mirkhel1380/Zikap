@@ -1,0 +1,7 @@
+# First project guidance
+
+The customer Overview now shows a three-part starting guide only after a successful project-list response with no linked projects and no next page. It links to the existing limited source-HTML review, free planning tools and optional specialist request form, plus earlier-receipt linking and Help & support. It does not measure completed setup steps, create projects, run scans, generate AI text or initiate checkout. Customers can choose any starting point.
+
+The guide is hidden by default, hidden for accounts with loaded projects and cleared on sign-out. A failed initial project load does not classify an account as new. There is no new persistence, API, email or payment action. The request form's obsolete no-crawler sentence was replaced with accurate manual-service and ranking/publishing limitations.
+
+Validation on November 7, 2026: account.js syntax passed. Real customer assets were checked with isolated empty, existing-project and unavailable-project fixtures. The three primary guide links opened their matching workspace views. All five guide links point to existing view IDs. At a 390px iframe width, body client/scroll widths both measured 375px. The guide appeared for an empty account and stayed hidden for the existing-project and failed-initial-load fixtures. No production account/order/message/payment/AI request was created. Account JS/CSS and workspace style references were versioned for this release. This presentation-only change did not require new backend tests.

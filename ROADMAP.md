@@ -98,3 +98,7 @@ Added customer-owned, read-only recent saved states with status/date/version met
 ## Customer report sections — November 7, 2026
 
 Long specialist reports now offer a heading-based section selector and explicit Go to section control, with keyboard focus and sticky-toolbar clearance. Short unstructured reports retain their plain reading view. Report text downloads remain unchanged. Three existing layout tests and isolated desktop/mobile UI checks passed; see backend/REPORT_PRINT_QA.md. Domain/email work remains deferred.
+
+## Customer starting guide — November 7, 2026
+
+The empty customer Overview now guides visitors through limited website review, free planning tools and optional paid specialist requests. Existing receipts and account support have direct links. It appears only after a successful empty project load and is hidden for existing projects or a failed initial load. The request form's obsolete crawler statement was corrected. Syntax and isolated desktop/mobile navigation/state checks passed; see backend/CUSTOMER_START_GUIDE.md. Domain/email setup stays deferred.
