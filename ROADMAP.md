@@ -72,3 +72,5 @@ The owner approved the researched staged refund proposal on November 7, 2026. Th
 ## Planned policy mailboxes
 
 At the owner’s request, the drafts now name support@zikap.site for support/refunds and privacy@zikap.site for privacy requests. Both are explicitly pending creation and verification, with no mailto links or public navigation/footer placement. No domain purchase, mailbox creation, mail forwarding, sender verification, email-provider activation or delivery test is claimed. The existing signed-in Help & support route remains available. The full policy set remains not yet effective until working contacts and the other outstanding details are completed.
+
+At the owner’s subsequent explicit request, visible mailbox-activation warnings were removed from the draft policy pages. They now show the email addresses without activation labels. This is a presentation change only: mailbox creation, domain ownership, email delivery and sender configuration have not been verified or activated.
