@@ -30,7 +30,7 @@ Reviewed November 7, 2026 against repository main. English UI, original logo, Gi
 Before these become customer policies, confirm:
 
 1. The refund approach: the draft proposes a full refund before agreed work starts and review against work completed after it starts. This is not yet approved.
-2. The actual service operator and a public support/privacy/refund contact. Do not assume a legal entity or invent an email address.
+2. Highlink LLC is confirmed by the owner as the operator of Zikap. Registered business details and a public support/privacy/refund contact remain to be provided; no address, jurisdiction or email is assumed.
 3. Retention periods for account/project/payment information and necessary exceptions. The current code has no general automatic deletion period.
 
 ## Activation dependencies deferred by the owner
@@ -58,3 +58,7 @@ Customer availability now distinguishes personal/shared quota exhaustion, owner 
 ## Source findings downloads completed
 
 Customers can download a selected saved check as plain text, including source evidence, sampled/unchecked pages, scope, limitations and expiry. This uses no AI quota and remains available with AI paused. Three formatter tests and a real isolated browser download passed; mobile layout was checked. No server-side reports, orders or live customer records were created by this release.
+
+## Confirmed policy operator
+
+The owner confirmed Highlink LLC as the company operating Zikap and authorized naming it in the policies. The three draft policies and their review overview now state this relationship. Branding, header and footer remain unchanged. These pages stay noindex/nofollow and not yet effective: registered business details, public contact, retention decisions and refund approval are still outstanding.
