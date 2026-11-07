@@ -1,4 +1,11 @@
 #report-print-sheet{display:none}
+.reader-navigation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center;width:100%;min-width:0}
+.reader-navigation[hidden]{display:none}
+.reader-navigation label{grid-column:1/-1;font-size:12px;margin:0;color:#263d5e}
+.reader-navigation select{width:100%;min-width:0;max-width:100%;margin:0;font-size:12px;min-height:40px}
+.reader-navigation .btn{min-height:40px;white-space:nowrap}
+.report-section-heading:focus{outline:2px solid #3265dc;outline-offset:6px}
+@media(max-width:500px){.reader-navigation{grid-template-columns:minmax(0,1fr)}.reader-navigation .btn{justify-self:start}}
 .report-brand img{width:132px;height:auto;flex:0 0 auto}
 /* Report screen layout; the source text remains available separately. */
 .report-intro{color:#64748b;font-size:12px;margin:18px 0 28px}.report-content{min-width:0}.report-section-heading{font-size:19px;line-height:1.35;letter-spacing:-.015em;color:#14305c;margin:30px 0 12px;border-bottom:1px solid #dce5f2;padding-bottom:9px;overflow-wrap:anywhere}.report-copy{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.8;color:#26364c;margin:0 0 15px;background:none;border:0;padding:0;max-width:100%}.reader-paper{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:600;white-space:nowrap}.reader-paper select{min-height:38px;width:110px;margin:0;font-size:12px;padding:8px}.reader-toolbar{flex-wrap:wrap}.reader-toolbar .actions{flex-wrap:wrap}.report-metadata dd{overflow-wrap:anywhere;min-width:0}#report-document{min-width:0}@media(max-width:600px){.reader-paper{width:100%;justify-content:space-between}.reader-toolbar .actions{width:100%}.report-section-heading{font-size:17px}}

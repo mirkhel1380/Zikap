@@ -94,3 +94,7 @@ The server now rejects Delivered updates containing a blank report or the built-
 ## Customer project activity — November 7, 2026
 
 Added customer-owned, read-only recent saved states with status/date/version metadata only; current state plus up to 20 retained historical states. Explicit load/refresh, session/view guards and graceful history-unavailable handling. This is not a full work ledger or proof of work start. See backend/CUSTOMER_ACTIVITY.md. Domain/email setup remains deferred at the owner's request.
+
+## Customer report sections — November 7, 2026
+
+Long specialist reports now offer a heading-based section selector and explicit Go to section control, with keyboard focus and sticky-toolbar clearance. Short unstructured reports retain their plain reading view. Report text downloads remain unchanged. Three existing layout tests and isolated desktop/mobile UI checks passed; see backend/REPORT_PRINT_QA.md. Domain/email work remains deferred.

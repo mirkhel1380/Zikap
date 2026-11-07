@@ -20,3 +20,9 @@ Before printing, the reader creates a report-only copy outside the modal dialog.
 ## Verification limit
 
 The cloud browser’s native OS print dialog and its final Chromium PDF bytes were not automated. PDF pagination checks used a separate paged-media engine on the same report markup and stylesheet. Native print settings, browser-specific pagination, fonts and margin-box support can affect final output. The original plain-text report remains available as a fallback. No PDF-generation service, external report upload, extra billing or new runtime dependency is introduced.
+
+## Report section navigation — November 7, 2026
+
+The reader now builds a Jump to report section selector from its existing safely rendered headings, plus Report overview. Go to section explicitly moves keyboard focus and scrolls the selected heading below the sticky toolbar. Labels use textContent; the navigation does not parse HTML, request extra data or alter the saved report. Navigation is hidden for reports without headings or the plain-text fallback. Closing the report/session clears targets and options. The controls stay outside the print-only document. Account asset references were bumped to v2.
+
+Validation: three existing report-layout tests passed (literal evidence, Unicode/long content and recoverable original report text). Actual customer assets were checked with a clearly labeled isolated six-section report, including desktop and 390px iframe navigation, keyboard focus and target placement below the toolbar. Mobile dialog client/scroll widths both measured 324px. Closing cleared all options; a short report without headings hid navigation. A browser-downloaded text file matched the original sample report exactly. No production report, customer, payment, message or AI request was created. Browser-native PDF output was not rerun for this toolbar-only addition.
