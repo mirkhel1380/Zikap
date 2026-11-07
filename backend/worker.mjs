@@ -150,7 +150,7 @@ export default {async scheduled(controller,env,ctx){
       if(id&&req.method==='PATCH'){
         const data=await jsonBody(req,110000),status=text(data.status,30),report=text(data.report,90000,false),note=text(data.note,2000,false);
         if(!states.includes(status))throw new ApiError('Invalid order status.');
-        if(status==='delivered'&&!report)throw new ApiError('Add a report before marking delivered.');
+        if(status==='delivered'&&(!report||/\[ADD\b/i.test(report)))throw new ApiError('Delivery needs a completed report. Replace every [ADD ...] placeholder and include the actual findings before marking delivered.');
         const expected=data.expectedVersion;let changed=false;
         if(expected!==undefined){if(!Number.isSafeInteger(expected)||expected<0||expected>2147483647)throw new ApiError('Invalid saved order version.');if(!await historyReady(env))throw new ApiError('Version protection is unavailable. Refresh after the service is updated.',503);const baseline=await env.DB.prepare('SELECT status,report,owner_note,COALESCE((SELECT version FROM order_edit_versions WHERE order_id=orders.id),0) editVersion FROM orders WHERE id=?').bind(id).first();if(!baseline)throw new ApiError('Order not found.',404);if(baseline.editVersion!==expected)throw new ApiError('This order changed in another page or by a customer revision. Your draft is still on this page. Download it before reopening the order to review the latest saved version.',409);changed=baseline.status!==status||baseline.report!==report||baseline.owner_note!==note;}
         await protectOwnerChange(env,id,status,ApiError);

@@ -118,3 +118,14 @@ test('a work-start note racing the write cannot be reused to imply a fresh start
  const prepare=serviceEnv.DB.prepare;let raced=false;serviceEnv.DB.prepare=function(sql){if(!raced&&sql.startsWith('UPDATE orders SET status=?,report=?,owner_note=?')){raced=true;db.prepare("UPDATE orders SET owner_note='Starting the agreed review now.' WHERE id=?").run(id);}return prepare.call(this,sql);};
  const result=await call(env,path,'PATCH',{status:'in_progress',note:'Starting the agreed review now.',report:''},owner.cookie);assert.equal(result.status,409);assert.equal(db.prepare('SELECT status FROM orders WHERE id=?').get(id).status,'accepted');db.close();
 });
+
+test('delivery rejects blank or unfinished outlines without changing saved state or history',async()=>{
+ const {db,env}=setup();enableHistory(db);const owner=await create(env),id=historyOrder(db),path='/admin/orders/'+id,draft='DRAFT REPORT\nSummary: [ADD findings]';
+ const prepared=await call(env,path,'PATCH',{status:'accepted',note:'Scope accepted.',report:draft,expectedVersion:0},owner.cookie);assert.equal(prepared.status,200);
+ for(const report of ['', '  ', 'Summary: [ADD findings]', 'Evidence: [add URL]', 'Review: [ADD\ndate]']){
+  const rejected=await call(env,path,'PATCH',{status:'delivered',note:'Delivery update',report,expectedVersion:1},owner.cookie);assert.equal(rejected.status,400);assert.match(rejected.body.error,/completed report/);
+  const unchanged=db.prepare('SELECT status,report,owner_note FROM orders WHERE id=?').get(id);assert.equal(unchanged.status,'accepted');assert.equal(unchanged.report,draft);assert.equal(unchanged.owner_note,'Scope accepted.');assert.equal(db.prepare('SELECT version FROM order_edit_versions WHERE order_id=?').get(id).version,1);
+ }
+ const report='REVIEW CONTEXT\nSample report for an isolated API test.\n[ADDITION] Follow-up explanation.';
+ const delivered=await call(env,path,'PATCH',{status:'delivered',note:'The agreed report is available.',report,expectedVersion:1},owner.cookie);assert.equal(delivered.status,200);assert.equal(delivered.body.orderUpdate.editVersion,2);assert.equal(delivered.body.orderUpdate.report,report);db.close();
+});

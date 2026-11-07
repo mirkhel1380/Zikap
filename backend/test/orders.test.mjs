@@ -45,3 +45,10 @@ test('readiness identifies the running API and reports missing runtime setup wit
 });
 
 test('readiness distinguishes a short secret from a missing secret without exposing it',async()=>{const {env,db}=setup();const secret='short-test-value';const result=await call({...env,ADMIN_TOKEN:secret},'/health');assert.equal(result.status,503);assert.equal(result.body.adminSecretStatus,'too_short');assert.equal(JSON.stringify(result.body).includes(secret),false);db.close();});
+
+test('legacy owner API cannot expose an unfinished outline as a delivered customer report',async()=>{
+ const {env,db}=setup(),created=await call(env,'/orders','POST',data),{id,token}=created.body,path='/admin/orders/'+id;
+ const rejected=await call(env,path,'PATCH',{status:'delivered',report:'Evidence: [ADD actual observations]',note:'Ready'},env.ADMIN_TOKEN);assert.equal(rejected.status,400);
+ const pending=await call(env,'/orders/'+id,'GET',null,token);assert.equal(pending.body.status,'requested');assert.equal(pending.body.report,'');
+ assert.equal((await call(env,path,'PATCH',{status:'accepted',report:'Evidence: [ADD actual observations]',note:'Draft under preparation'},env.ADMIN_TOKEN)).status,200);db.close();
+});

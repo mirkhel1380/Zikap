@@ -86,3 +86,7 @@ The owner approved necessity-based account/project retention, the existing seven
 ## Work-start notice guard completed
 
 The owner editor and order API now require a fresh customer-visible scope/start note when moving an order to In progress. Server timestamps and the existing status/update fields continue to date and display the saved notice. Empty/reused transition notes fail without updating the order, and a conditional database write protects against a concurrent note change. This does not add an immutable first-start ledger or automatic refund processing. The release passed 154 backend tests and isolated real-editor browser checks; no production orders were modified for demonstration. See backend/WORK_START_QA.md.
+
+## Delivery placeholder protection completed
+
+The server now rejects Delivered updates containing a blank report or the built-in `[ADD ...]` template markers, matching the existing owner-editor rule. Rejected updates preserve the prior status/report/note/history version; non-delivered drafts can still contain templates. Both owner API routes are covered. The release passed 156 backend tests and made no demonstration changes to production orders. This does not certify report quality or automatically deliver work.
