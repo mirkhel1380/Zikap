@@ -68,3 +68,7 @@ The owner subsequently confirmed Highlink LLC is registered in Texas, United Sta
 ## Refund principles approved
 
 The owner approved the researched staged refund proposal on November 7, 2026. The refund draft and service terms now describe full refunds before paid work begins, refunding the unperformed portion after starting with an explained calculation, and correcting scope-related delivery issues before reviewing a partial/full refund if unresolved. Mandatory rights are preserved. Existing customer-visible project updates/status support a manual dated work-start process; no immutable start timestamp, new enforcement mechanism, payment action or automated refund was introduced. Public contact, remaining business information and retention decisions are still pending, so all four review pages remain noindex/nofollow drafts outside public navigation/sitemap.
+
+## Planned policy mailboxes
+
+At the owner’s request, the drafts now name support@zikap.site for support/refunds and privacy@zikap.site for privacy requests. Both are explicitly pending creation and verification, with no mailto links or public navigation/footer placement. No domain purchase, mailbox creation, mail forwarding, sender verification, email-provider activation or delivery test is claimed. The existing signed-in Help & support route remains available. The full policy set remains not yet effective until working contacts and the other outstanding details are completed.
