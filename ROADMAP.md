@@ -25,11 +25,11 @@ Reviewed November 7, 2026 against repository main. English UI, original logo, Gi
 
 ## Prepared for owner review
 
-`policy-review.html` links draft service terms, a privacy notice and cancellation/refund proposals. They are visibly marked not yet effective, carry noindex/nofollow and are not in the sitemap or public navigation/footer. They do not change checkout acknowledgements or create a new refund entitlement.
+`policy-review.html` links draft service terms, a privacy notice and the owner-approved cancellation/refund approach. They are visibly marked not yet effective, carry noindex/nofollow and are not in the sitemap or public navigation/footer. The policy set is not yet effective and does not change checkout acknowledgements or existing project terms.
 
 Before these become customer policies, confirm:
 
-1. The refund approach: the draft proposes a full refund before agreed work starts and review against work completed after it starts. This is not yet approved.
+1. Refund approach approved by the owner: full refund before work starts; refund of unperformed work after starting; correction first, followed by partial/full refund review for unresolved delivery issues. A dated customer-visible scope/start update and In progress status document the work stage. No automatic refund calculation or financial action was added.
 2. Highlink LLC is confirmed by the owner as the operator of Zikap. The owner confirmed registration in Texas, United States. A business contact address and public support/privacy/refund contact remain to be provided; no address, governing law or email is assumed.
 3. Retention periods for account/project/payment information and necessary exceptions. The current code has no general automatic deletion period.
 
@@ -64,3 +64,7 @@ Customers can download a selected saved check as plain text, including source ev
 The owner confirmed Highlink LLC as the company operating Zikap and authorized naming it in the policies. The three draft policies and their review overview now state this relationship. Branding, header and footer remain unchanged. These pages stay noindex/nofollow and not yet effective: registered business details, public contact, retention decisions and refund approval are still outstanding.
 
 The owner subsequently confirmed Highlink LLC is registered in Texas, United States. The policy operator statements now include that registration location. This does not assert a physical operating address, adopt Texas governing law or make the policy drafts effective.
+
+## Refund principles approved
+
+The owner approved the researched staged refund proposal on November 7, 2026. The refund draft and service terms now describe full refunds before paid work begins, refunding the unperformed portion after starting with an explained calculation, and correcting scope-related delivery issues before reviewing a partial/full refund if unresolved. Mandatory rights are preserved. Existing customer-visible project updates/status support a manual dated work-start process; no immutable start timestamp, new enforcement mechanism, payment action or automated refund was introduced. Public contact, remaining business information and retention decisions are still pending, so all four review pages remain noindex/nofollow drafts outside public navigation/sitemap.
