@@ -195,6 +195,18 @@
   const next=node('section','','next-step');next.append(node('span','YOUR NEXT STEP','eyebrow'),node('p',nextStep(order)));box.append(next);
   const info=node('dl','');for(const [title,value] of [['Website',order.website],['Package summary',order.packageDescription],['Scope',scopes[order.packageId]||''],['Pages',(order.pages||[]).join('\n')||'No pages supplied'],['Topic',order.topic||'Not supplied'],['Language',order.language],['Market',order.market],['Your goals',order.goals]]){info.append(node('dt',title),node('dd',value||''));}box.append(info);
   box.append(node('h3','Latest project update'),node('p',order.note||'Your request awaits review. Acceptance, scope and timing still need agreement. Submitting a request does not charge you.'));
+  const activity=node('details','','project-activity'),activityTitle=node('summary','Recent project activity'),activityList=node('ol','','activity-list'),activityMessage=node('p','','tiny'),activityRefresh=button('Load recent activity');
+  activityMessage.setAttribute('role','status');activity.append(activityTitle,node('p','Saved project states, newest first. Up to 20 previous states are retained. A repeated status can mean a report or update was edited. This is not a complete work log.','tiny'),activityRefresh,activityMessage,activityList);box.append(activity);
+  const activityEpoch=epoch;let activityBusy=false;
+  activityRefresh.addEventListener('click',async()=>{
+   if(activityBusy)return;activityBusy=true;activityRefresh.disabled=true;activityMessage.textContent='Loading recent activity…';
+   const alive=()=>epoch===activityEpoch&&activity.isConnected;
+   try{const data=await api('/orders/'+order.id+'/activity');if(!alive())return;activityList.replaceChildren();
+    for(const item of data.activity){const entry=node('li','','activity-entry'),stamp=document.createElement('time');stamp.dateTime=item.savedAt;stamp.textContent=new Date(item.savedAt).toLocaleString();entry.append(node('strong',states[item.status]||item.status),node('span',item.current?'Latest saved state':'Previous saved state','tiny'),stamp);activityList.append(entry);}
+    activityMessage.textContent='Saved states loaded. Dates show when each state was saved; they do not confirm when work began.';activityRefresh.textContent='Refresh recent activity';
+   }catch(e){if(alive()&&!sessionError(e))activityMessage.textContent=errorText(e);}
+   finally{if(alive()){activityBusy=false;activityRefresh.disabled=false;}}
+  });
   const payment=order.payment||{available:false,status:'unpaid'},paymentBox=node('section','','payment-panel');paymentBox.append(node('h3','Payment'));
   const paidLabels={paid:'Payment confirmed',partially_refunded:'Partially refunded',refunded:'Refunded'};
   if(paidLabels[payment.status])paymentBox.append(node('p',paidLabels[payment.status]+(payment.testMode?' (Stripe test mode; no real charge)':'')));

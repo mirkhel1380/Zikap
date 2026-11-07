@@ -90,3 +90,7 @@ The owner editor and order API now require a fresh customer-visible scope/start 
 ## Delivery placeholder protection completed
 
 The server now rejects Delivered updates containing a blank report or the built-in `[ADD ...]` template markers, matching the existing owner-editor rule. Rejected updates preserve the prior status/report/note/history version; non-delivered drafts can still contain templates. Both owner API routes are covered. The release passed 156 backend tests and made no demonstration changes to production orders. This does not certify report quality or automatically deliver work.
+
+## Customer project activity — November 7, 2026
+
+Added customer-owned, read-only recent saved states with status/date/version metadata only; current state plus up to 20 retained historical states. Explicit load/refresh, session/view guards and graceful history-unavailable handling. This is not a full work ledger or proof of work start. See backend/CUSTOMER_ACTIVITY.md. Domain/email setup remains deferred at the owner's request.

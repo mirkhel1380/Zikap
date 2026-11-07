@@ -137,3 +137,25 @@ test('complete order journey uses the independent owner portal, payment reconcil
   assert.equal((await ownerCall('/admin-api/logout', 'POST', {}, owner)).status, 200);
   assert.equal((await ownerCall(op, 'GET', undefined, owner)).status, 401);
 });
+
+test('customer activity is bounded metadata, authenticated and isolated from other customers', async t => {
+ const f=fixture();t.after(()=>f.db.close());
+ const call=(p,m,b,c)=>request(worker,f.env,'https://customer.example',p,m,b,c);
+ const register=async email=>(await call('/account-api/register','POST',{name:'Activity fixture',email,password:'Activity-fixture-password-2026',consent:true})).cookie;
+ const customer=await register('activity@example.test'),other=await register('other@example.test'),id=crypto.randomUUID(),path='/account-api/orders/'+id+'/activity';
+ assert.equal((await call('/account-api/orders','POST',{requestId:id,packageId:'audit',quotedPrice:29,catalogVersion:1,website:'https://example.com',pages:'https://example.com/',topic:'Isolated fixture',language:'English',market:'Fixture',goals:'Verify activity history without purchasing a service.',consent:true,company:''},customer)).status,201);
+ const initial=await call(path,'GET',undefined,customer);assert.equal(initial.body.activity.length,1);assert.equal(initial.body.activity[0].version,0);
+ for(let i=0;i<25;i++)f.db.prepare("UPDATE orders SET status=?,owner_note=?,report=?,updated_at=? WHERE id=?").run(i%2?'in_progress':'accepted','PRIVATE OLD NOTE '+i,'PRIVATE REPORT '+i,new Date(Date.UTC(2026,9,1,0,i)).toISOString(),id);
+ const response=await call(path,'GET',undefined,customer);
+ assert.equal(response.status,200);assert.equal(response.body.activity.length,21);assert.equal(response.body.retainedLimit,20);
+ assert.deepEqual(response.body.activity.map(x=>x.version),Array.from({length:21},(_,i)=>25-i));
+ assert.equal(response.body.activity[0].current,true);assert.equal(response.body.activity.slice(1).every(x=>!x.current),true);
+ for(const entry of response.body.activity)assert.deepEqual(Object.keys(entry).sort(),['current','savedAt','status','version']);
+ assert.equal(JSON.stringify(response.body).includes('PRIVATE'),false);
+ assert.equal((await call(path,'GET',undefined,other)).status,404);
+ assert.equal((await call(path)).status,401);
+ assert.equal((await call(path,'POST',{},customer)).status,405);
+ f.db.exec('DROP TRIGGER order_history_capture');
+ assert.equal((await call(path,'GET',undefined,customer)).status,503);
+ assert.equal((await call('/account-api/orders/'+id,'GET',undefined,customer)).status,200);
+});

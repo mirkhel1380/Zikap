@@ -1,4 +1,5 @@
 import {supportRoute} from './support.mjs';
+import {customerActivity} from './history.mjs';
 import {customerExport} from './customer-export.mjs';
 import {quoteOrder,snapshotStatement,orderSnapshot,orderSnapshots} from './catalog.mjs';
 import {aiReviewRoute} from './ai-reviews.mjs';
@@ -135,6 +136,14 @@ export async function accountRoute(req,env,h){
   const owner=await env.DB.prepare('SELECT user_id FROM customer_order_links WHERE order_id=?').bind(id).first();
   if(owner?.user_id!==user.id)throw new ApiError('This project is already linked to another account.',409);
   return result({order:await accountOrder(row)});
+ }
+ const activityMatch=path.match(/^\/account-api\/orders\/([a-f0-9-]{36})\/activity$/);
+ if(activityMatch){
+  if(req.method!=='GET')throw new ApiError('Method not allowed.',405);
+  await rate(req,env,'account-read',240);
+  const row=await env.DB.prepare('SELECT o.id FROM orders o JOIN customer_order_links l ON l.order_id=o.id WHERE o.id=? AND l.user_id=?').bind(activityMatch[1],user.id).first();
+  if(!row)throw new ApiError('Project not found.',404);
+  return result(await customerActivity(env,row.id,ApiError));
  }
  const messageMatch=path.match(/^\/account-api\/orders\/([a-f0-9-]{36})\/messages(\/read)?$/);
  if(messageMatch){
