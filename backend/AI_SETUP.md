@@ -6,11 +6,11 @@ This release adds a private customer workspace at `/account/#ai-review`. It does
 
 Signed-in customers can request the existing up-to-three-page public source-HTML audit and save its evidence privately for seven days. The same crawler retains consent, robots, DNS/redirect SSRF protection, bounded bodies, per-IP/global/host quotas and its existing limitations. A source check is labelled rule-based, not AI-generated. Findings, scope and inaccessible pages remain visible. Ten recent saved checks are listed.
 
-The AI step is separate, opt-in and off by default. It becomes available only with the AI binding, the private schema and the server-side flag `AI_FREE_PLAN_CONFIRMED=true`. Do not set that flag until the owner has verified the Cloudflare account is actually on **Workers Free**, with no paid AI Gateway billing arrangement. This flag is an owner's assertion, not an API verification of the billing plan. If the account moves to Paid, clear the flag before using this feature.
+The AI step is separate and opt-in. Runtime requests remain off without explicit activation. On 2026-11-07 the owner confirmed Workers Free and authorized activation; the deploy helper now registers the primary Worker activation secret as true unless a build override explicitly sets false. It becomes available only with the AI binding, the private schema and the server-side flag `AI_FREE_PLAN_CONFIRMED=true`. Do not set that flag until the owner has verified the Cloudflare account is actually on **Workers Free**, with no paid AI Gateway billing arrangement. This flag is an owner's assertion, not an API verification of the billing plan. If the account moves to Paid, clear the flag before using this feature.
 
 ## Cost controls
 
-- Fixed model: `@cf/meta/llama-3.2-3b-instruct`. No premium/provider fallback and no external model API key.
+- Fixed model: `@cf/google/gemma-4-26b-a4b-it`. No premium/provider fallback and no external model API key.
 - Two generation attempts per customer per UTC day; twenty attempts total per UTC day across this application.
 - Atomic database reservations happen before inference. Failed, interrupted and unknown attempts still count. Concurrent clicks cannot reserve the same check twice.
 - Prompt payload is bounded to 10,000 UTF-8 bytes and eight finding codes/flags; output is limited to 512 tokens.
@@ -18,13 +18,13 @@ The AI step is separate, opt-in and off by default. It becomes available only wi
 
 These caps limit this application's usage. They cannot account for other Workers, AI Gateway calls or changes to Cloudflare pricing/billing. Cloudflare documents a daily free allocation of 10,000 neurons; Workers Free refuses further operations after its limit, whereas Workers Paid can charge for usage above the allowance. Keeping a Paid account's application below a request-count target is **not** a guarantee of zero total account charges. Base Worker/D1/storage quotas remain separate.
 
-The documented model rates at implementation were roughly 4,625 neurons per million input tokens and 30,475 per million output tokens. The short fixed prompts/output and twenty-call ceiling provide margin, but no exact invoice amount is promised. Recheck provider pricing and model availability before activation; stop rather than silently selecting a different model if it is unavailable.
+The documented model rates at implementation were roughly 9,091 neurons per million input tokens and 27,273 per million output tokens. The short fixed prompts/output and twenty-call ceiling provide margin, but no exact invoice amount is promised. Recheck provider pricing and model availability before activation; stop rather than silently selecting a different model if it is unavailable.
 
 ## Activation
 
 1. In the merchant's Cloudflare dashboard, verify **Workers Free** under the account's Workers plan/billing settings. This workflow does not upgrade it or add a payment method. Verify the configured binding points directly to Workers AI, not a separately billed gateway/provider.
 2. The committed Wrangler configuration already declares `ai.binding = AI`. The deploy script applies `0010_ai_reviews.sql` before deployment. Adding a binding alone does not invoke inference.
-3. Only after verifying the free plan, set encrypted build secret `AI_FREE_PLAN_CONFIRMED` to the literal `true` and redeploy. The deploy helper transfers it only to the primary Worker via stdin. Existing runtime secrets omitted from Builds are preserved. Store `false` to disable; never put credentials in chat.
+3. The owner-confirmed release registers `AI_FREE_PLAN_CONFIRMED=true` through encrypted runtime-secret upload. A build secret `AI_FREE_PLAN_CONFIRMED=false` overrides that activation and must be set before moving to a Paid plan. The deploy helper transfers it only to the primary Worker via stdin. Existing runtime secrets omitted from Builds are preserved. Store `false` to disable; never put credentials in chat.
 4. `/health.aiReviews` and the independent owner's **System settings** show readiness booleans. The customer workspace shows daily availability. They do not independently inspect the account's billing plan.
 5. Run one owner-controlled review of a permitted public page. Check both model quality and the Workers AI usage dashboard before offering it broadly. No live inference has been performed by this release process.
 
@@ -45,3 +45,11 @@ Official references:
 - https://developers.cloudflare.com/workers-ai/platform/pricing/
 - https://developers.cloudflare.com/workers-ai/configuration/bindings/
 - https://developers.cloudflare.com/workers-ai/models/llama-3.2-3b-instruct/
+
+## November 7 activation and model compatibility
+
+Rechecked official pricing/model documentation before activation. The previous Llama 3.2 3B model is scheduled for removal on November 20, 2026. The fixed replacement is Cloudflare-hosted Gemma 4 26B A4B, using the direct AI binding without Gateway configuration, reasoning disabled, JSON-object output and max_completion_tokens=512. Parse the single chat-completion choice and require finish_reason=stop; truncated, ambiguous or tool-call outputs fail closed and do not retry. There is no provider/model fallback. This release does not claim to have independently inspected the billing account or completed a real model generation.
+
+- https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/
+- https://developers.cloudflare.com/workers-ai/get-started/workers-wrangler/
+- https://developers.cloudflare.com/changelog/product/workers-ai/

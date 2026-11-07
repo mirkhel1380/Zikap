@@ -11,7 +11,7 @@ Reviewed November 7, 2026 against repository main. English UI, original logo, Gi
 - A complete isolated customer/admin/payment/message/report/revision regression passed. The November 7 catalog release passed 127 tests, including price-change races, immutable order prices, owner-only publishing and the complete isolated order/payment journey.
 - Stripe live configuration and the payment schema were observed ready in the November 2 deployment review. The merchant previously reported successful sandbox checkout, webhook replay and refund checks. No genuine live purchase has been independently observed; do not use an artificial live purchase for testing.
 - Durable transactional email notifications and four templates are deployed. Sending was last observed off, pending the owner’s domain, verified sender, provider key and approved delivery check.
-- Private saved website checks and limited AI explanations are deployed. AI was last observed off with its binding/schema ready, awaiting explicit confirmation of Workers Free. Limits are two attempts per customer per UTC day and twenty shared attempts. No production inference was performed during release.
+- Private saved website checks and limited AI explanations are deployed. The owner confirmed Workers Free on November 7 and authorized activation. The release registers the activation flag, with a false build override to disable; real inference and quality still require a signed-in owner-controlled check. Limits are two attempts per customer per UTC day and twenty shared attempts. No production inference was performed during release.
 
 - Owner-only project review checklists and internal notes now persist independently in D1, with stale-write protection, private draft downloads and unsaved-edit warnings. They are excluded from customer payloads, reports, messages and order edit history.
 
@@ -37,7 +37,7 @@ Before these become customer policies, confirm:
 
 - Custom domain and business email.
 - Email sender/provider verification after the domain is ready; see backend/EMAIL_SETUP.md.
-- The account’s Workers Free plan confirmation before enabling AI; see backend/AI_SETUP.md. The activation flag is an owner assertion, not automatic billing-plan verification.
+- Keep the AI activation flag disabled before any move to Workers Paid. The owner confirmed Free; this remains an owner assertion, not automatic billing-plan verification. See backend/AI_SETUP.md.
 - Observation of a genuine customer purchase and matching live webhook. Deployment readiness alone does not certify provider permissions, merchant eligibility or successful live processing.
 
 ## Later implementation priorities

@@ -1,6 +1,6 @@
 import {auditRoute} from './website-audit.mjs';
 export const aiLimits=Object.freeze({perCustomer:2,perDay:20,maxTokens:512,retentionDays:7});
-export const aiModel='@cf/meta/llama-3.2-3b-instruct';
+export const aiModel='@cf/google/gemma-4-26b-a4b-it';
 const dayAt=now=>new Date(now*1000).toISOString().slice(0,10);
 export async function aiReadiness(env){
  let schema=false;
@@ -67,8 +67,10 @@ export async function aiReviewRoute(req,env,user,h){
  try{
   // No premium fallback, external API key or automatic retry. One fixed model and bounded output.
   let timer;const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('AI timeout')),25000);});
-  let output;try{output=await Promise.race([env.AI.run(aiModel,{messages,max_tokens:aiLimits.maxTokens,temperature:0.2,stream:false}),timeout]);}finally{clearTimeout(timer);}
-  const recommendations=validateOutput(output?.response,audit);
+  let output;try{output=await Promise.race([env.AI.run(aiModel,{messages,max_completion_tokens:aiLimits.maxTokens,temperature:0.2,stream:false,chat_template_kwargs:{enable_thinking:false},response_format:{type:'json_object'}}),timeout]);}finally{clearTimeout(timer);}
+  const choice=output?.choices?.length===1?output.choices[0]:null;
+  if(choice?.finish_reason!=='stop'||choice.message?.tool_calls?.length)throw Error('Incomplete AI response');
+  const recommendations=validateOutput(choice.message?.content,audit);
   await env.DB.prepare("UPDATE ai_checks SET ai_state='ready',ai_json=? WHERE id=? AND user_id=? AND ai_state='generating'").bind(JSON.stringify(recommendations),row.id,user.id).run();
  }catch{
   await env.DB.prepare("UPDATE ai_checks SET ai_state='failed',error_code='AI_UNAVAILABLE' WHERE id=? AND user_id=? AND ai_state='generating'").bind(row.id,user.id).run();

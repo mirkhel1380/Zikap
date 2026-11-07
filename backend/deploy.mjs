@@ -25,6 +25,7 @@ export async function deployWithRuntimeSecret({env=process.env,run=runWrangler,l
  if(env.RESEND_API_KEY){if(typeof env.RESEND_API_KEY!=='string'||!/^re_[A-Za-z0-9_-]{8,200}$/.test(env.RESEND_API_KEY))throw new Error('RESEND_API_KEY has an invalid format. No deployment was started.');secrets.RESEND_API_KEY=env.RESEND_API_KEY;}
  if(env.EMAIL_SETTINGS){const email=emailSettings(env);if(!email.checks.settings||(email.enabled&&(!email.checks.sender||!email.checks.startAt)))throw new Error('EMAIL_SETTINGS needs valid notification settings before deployment.');secrets.EMAIL_SETTINGS=env.EMAIL_SETTINGS;}
  if(env.AI_FREE_PLAN_CONFIRMED!==undefined){if(!['true','false'].includes(env.AI_FREE_PLAN_CONFIRMED))throw new Error('AI_FREE_PLAN_CONFIRMED must be true or false. No deployment was started.');secrets.AI_FREE_PLAN_CONFIRMED=env.AI_FREE_PLAN_CONFIRMED;}
+ else secrets.AI_FREE_PLAN_CONFIRMED='true'; // Owner confirmed Workers Free on 2026-11-07. Set the build override to false to disable.
  const config=JSON.parse(readFileSync(resolve(directory,'wrangler.jsonc'),'utf8'));
  if(config.name!=='zikap'||config.main!=='worker.mjs'||config.assets?.binding!=='ACCOUNT_ASSETS'||config.assets?.directory!=='./account-static'||config.assets?.run_worker_first!==true)throw new Error('Expected the zikap API Worker with main worker.mjs and its account assets binding. No deployment was started.');
  const adminConfig=JSON.parse(readFileSync(resolve(directory,'admin.wrangler.jsonc'),'utf8'));
