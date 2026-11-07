@@ -82,3 +82,7 @@ The owner chose to omit a public street address. The draft policy pages retain H
 ## Retention principles approved
 
 The owner approved necessity-based account/project retention, the existing seven-day customer-access expiry for saved checks, manual privacy/deletion request review and separate assessment of necessary financial records. The privacy draft now describes those principles, verified-request handling, explanations for retained records and the limits of current operations. No account-deletion control, automatic purge, new legal deadline or production data deletion was added. The full policy set remains in draft for operational review, with domain/mailbox readiness still unverified internally.
+
+## Work-start notice guard completed
+
+The owner editor and order API now require a fresh customer-visible scope/start note when moving an order to In progress. Server timestamps and the existing status/update fields continue to date and display the saved notice. Empty/reused transition notes fail without updating the order, and a conditional database write protects against a concurrent note change. This does not add an immutable first-start ledger or automatic refund processing. The release passed 154 backend tests and isolated real-editor browser checks; no production orders were modified for demonstration. See backend/WORK_START_QA.md.

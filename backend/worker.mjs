@@ -154,7 +154,15 @@ export default {async scheduled(controller,env,ctx){
         const expected=data.expectedVersion;let changed=false;
         if(expected!==undefined){if(!Number.isSafeInteger(expected)||expected<0||expected>2147483647)throw new ApiError('Invalid saved order version.');if(!await historyReady(env))throw new ApiError('Version protection is unavailable. Refresh after the service is updated.',503);const baseline=await env.DB.prepare('SELECT status,report,owner_note,COALESCE((SELECT version FROM order_edit_versions WHERE order_id=orders.id),0) editVersion FROM orders WHERE id=?').bind(id).first();if(!baseline)throw new ApiError('Order not found.',404);if(baseline.editVersion!==expected)throw new ApiError('This order changed in another page or by a customer revision. Your draft is still on this page. Download it before reopening the order to review the latest saved version.',409);changed=baseline.status!==status||baseline.report!==report||baseline.owner_note!==note;}
         await protectOwnerChange(env,id,status,ApiError);
-        const savedAt=new Date().toISOString(),statement=expected===undefined?env.DB.prepare('UPDATE orders SET status=?,report=?,owner_note=?,updated_at=? WHERE id=?').bind(status,report,note,savedAt,id):env.DB.prepare('UPDATE orders SET status=?,report=?,owner_note=?,updated_at=? WHERE id=? AND COALESCE((SELECT version FROM order_edit_versions WHERE order_id=orders.id),0)=?').bind(status,report,note,savedAt,id,expected);
+        if(status==='in_progress'){
+          const previous=await env.DB.prepare('SELECT status,owner_note FROM orders WHERE id=?').bind(id).first();if(!previous)throw new ApiError('Order not found.',404);
+          if(!note||(previous.status!=='in_progress'&&note===(previous.owner_note||'').trim()))throw new ApiError('Add a new customer-visible update confirming the agreed scope and that work is beginning before marking In progress.');
+        }
+        const savedAt=new Date().toISOString();let updateSQL='UPDATE orders SET status=?,report=?,owner_note=?,updated_at=? WHERE id=?';const updateArgs=[status,report,note,savedAt,id];
+        if(expected!==undefined){updateSQL+=' AND COALESCE((SELECT version FROM order_edit_versions WHERE order_id=orders.id),0)=?';updateArgs.push(expected);}
+        // Recheck the transition at write time, including legacy writes without a version.
+        if(status==='in_progress'){updateSQL+=" AND (status='in_progress' OR TRIM(owner_note)<>?)";updateArgs.push(note);}
+        const statement=env.DB.prepare(updateSQL).bind(...updateArgs);
         const result=await statement.run();
         if(!result.meta.changes){const exists=await env.DB.prepare('SELECT id FROM orders WHERE id=?').bind(id).first();if(!exists)throw new ApiError('Order not found.',404);throw new ApiError('This order changed before your update was saved. Download your draft and reopen the order to review the latest version.',409);}
         // Acknowledge only this write. A later GET could already reflect another writer.

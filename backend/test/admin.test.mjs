@@ -99,3 +99,22 @@ test('AI usage uses UTC reservations and returns aggregates without private chec
  const result=await call(env,'/admin-api/ai-control','GET',undefined,owner.cookie);assert.equal(result.body.usage.attempts,3);assert.equal(result.body.usage.remaining,17);assert.equal(result.body.usage.completed,1);assert.equal(result.body.usage.failed,1);assert.equal(result.body.usage.inProgress,1);assert.equal(JSON.stringify(result.body).includes('private'),false);
  db.exec('DROP TABLE ai_runtime_settings');assert.equal((await call(env,'/admin-api/ai-control','GET',undefined,owner.cookie)).status,503);db.close();
 });
+
+test('starting work requires a fresh customer-visible update and leaves rejected edits unchanged',async()=>{
+ const {db,env}=setup();enableHistory(db);const owner=await create(env),id=historyOrder(db),path='/admin/orders/'+id;
+ await call(env,path,'PATCH',{status:'accepted',report:'',note:'Scope accepted; work has not started.',expectedVersion:0},owner.cookie);
+ for(const note of ['', '   ', 'Scope accepted; work has not started.']){const result=await call(env,path,'PATCH',{status:'in_progress',report:'',note,expectedVersion:1},owner.cookie);assert.equal(result.status,400);assert.match(result.body.error,/new customer-visible update/);}
+ assert.equal(db.prepare('SELECT status FROM orders WHERE id=?').get(id).status,'accepted');assert.equal(db.prepare('SELECT version FROM order_edit_versions WHERE order_id=?').get(id).version,1);
+ const started=await call(env,path,'PATCH',{status:'in_progress',report:'',note:'Beginning the agreed technical review of five public pages.',expectedVersion:1},owner.cookie);assert.equal(started.status,200);assert.equal(started.body.orderUpdate.editVersion,2);assert.ok(Number.isFinite(Date.parse(started.body.orderUpdate.updatedAt)));
+ const saved=await call(env,path,'GET',undefined,owner.cookie);assert.equal(saved.body.order.owner_note,started.body.orderUpdate.note);assert.equal(saved.body.order.status,'in_progress');
+ assert.equal((await call(env,path,'PATCH',{status:'in_progress',report:'Draft work',note:started.body.orderUpdate.note,expectedVersion:2},owner.cookie)).status,200);db.close();
+});
+test('work-start validation also protects legacy writes without an edit version',async()=>{
+ const {db,env}=setup();const owner=await create(env),id=historyOrder(db),path='/admin/orders/'+id;db.prepare("UPDATE orders SET status='accepted',owner_note='Previous acceptance' WHERE id=?").run(id);
+ assert.equal((await call(env,path,'PATCH',{status:'in_progress',note:'Previous acceptance',report:''},owner.cookie)).status,400);assert.equal((await call(env,path,'PATCH',{status:'in_progress',note:'Starting the agreed review now.',report:''},owner.cookie)).status,200);db.close();
+});
+test('a work-start note racing the write cannot be reused to imply a fresh start',async()=>{
+ const {db,env,serviceEnv}=setup();const owner=await create(env),id=historyOrder(db),path='/admin/orders/'+id;db.prepare("UPDATE orders SET status='accepted',owner_note='Previous acceptance' WHERE id=?").run(id);
+ const prepare=serviceEnv.DB.prepare;let raced=false;serviceEnv.DB.prepare=function(sql){if(!raced&&sql.startsWith('UPDATE orders SET status=?,report=?,owner_note=?')){raced=true;db.prepare("UPDATE orders SET owner_note='Starting the agreed review now.' WHERE id=?").run(id);}return prepare.call(this,sql);};
+ const result=await call(env,path,'PATCH',{status:'in_progress',note:'Starting the agreed review now.',report:''},owner.cookie);assert.equal(result.status,409);assert.equal(db.prepare('SELECT status FROM orders WHERE id=?').get(id).status,'accepted');db.close();
+});
