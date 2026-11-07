@@ -30,6 +30,12 @@ export async function customerExport(req,env,user,h,verifyPassword){
   const project={id:row.id,createdAt:row.created_at,updatedAt:row.updated_at,status:row.status,package:{id:row.package_id,title:saved.package_title||titles[row.package_id],summary:saved.package_description,priceUSD:row.price_usd,billing:'one-time'},brief:{website:row.website,pages:JSON.parse(row.pages),topic:row.topic,language:row.language,market:row.market,goals:row.goals},customerUpdate:row.owner_note,report:row.report,revision:{used:!!row.revision_used,note:row.revision_note},payment,messages:messages.results,actionPlan:actions.results};
   return {section:'projects',project,next:results.length>1?row.created_at+'|'+row.id:null};
  }
+ if(data.section==='support'){
+  const cursor=cursorOf(data.cursor,'iso',ApiError),bind=[user.id,cutoff];let where=' WHERE user_id=? AND created_at<?';if(cursor){where+=' AND (created_at<? OR (created_at=? AND id<?))';bind.push(cursor[0],cursor[0],cursor[1]);}
+  const {results}=await env.DB.prepare('SELECT id,topic,subject,status,created_at createdAt,updated_at updatedAt FROM support_threads'+where+' ORDER BY created_at DESC,id DESC LIMIT 2').bind(...bind).all(),row=results[0];
+  const messages=row?(await env.DB.prepare('SELECT id,sender_role role,body,created_at createdAt FROM support_messages WHERE thread_id=? ORDER BY created_at,id').bind(row.id).all()).results:[];
+  return {section:'support',supportRequest:row?{...row,messages}:null,next:row&&results.length>1?row.createdAt+'|'+row.id:null};
+ }
  if(data.section==='checks'){
   const cursor=cursorOf(data.cursor,'number',ApiError),bind=[user.id,now,grant.created_at];let where=' WHERE user_id=? AND expires_at>? AND created_at<=?';if(cursor){where+=' AND (created_at<? OR (created_at=? AND id<?))';bind.push(cursor[0],cursor[0],cursor[1]);}
   const {results}=await env.DB.prepare('SELECT id,created_at,expires_at,audit_json,ai_state,ai_json FROM ai_checks'+where+' ORDER BY created_at DESC,id DESC LIMIT 2').bind(...bind).all(),row=results[0];
