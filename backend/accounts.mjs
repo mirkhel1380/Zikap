@@ -1,3 +1,4 @@
+import {quoteOrder,snapshotStatement,orderSnapshot,orderSnapshots} from './catalog.mjs';
 import {aiReviewRoute} from './ai-reviews.mjs';
 // First-party customer sessions. No email delivery or password-reset email service.
 import {paymentsReady,stripeConfigured,paymentSummaries,checkout,reconcilePayment} from './payments.mjs';
@@ -48,7 +49,7 @@ export async function accountRoute(req,env,h){
   return {'Set-Cookie':cookie(token)};
  }
  const publicUser=u=>({name:u.name,email:u.email,emailVerified:false});
- const accountOrder=async(row,knownPayment,knownUnread)=>{let pages=[];try{pages=JSON.parse(row.pages);}catch{}const payment=knownPayment||(await paymentSummaries(env,[row.id])).get(row.id);const unread=knownUnread!==undefined?knownUnread:(await unreadCounts(env,[row.id],'customer')).get(row.id);return {...receipt(row),unreadMessages:unread,pages,topic:row.topic,language:row.language,market:row.market,goals:row.goals,payment,paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')};};
+ const accountOrder=async(row,knownPayment,knownUnread)=>{let pages=[];try{pages=JSON.parse(row.pages);}catch{}const payment=knownPayment||(await paymentSummaries(env,[row.id])).get(row.id);const unread=knownUnread!==undefined?knownUnread:(await unreadCounts(env,[row.id],'customer')).get(row.id);return {...receipt(await orderSnapshot(env,row)),unreadMessages:unread,pages,topic:row.topic,language:row.language,market:row.market,goals:row.goals,payment,paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')};};
  if(path==='/account-api/register'&&req.method==='POST'){
   await rate(req,env,'account-register',5);const data=await jsonBody(req,5000),email=emailOf(data.email),password=passwordOf(data.password),name=text(data.name,100);
   if(data.consent!==true)throw new ApiError('Please agree to store the details needed for your account and projects.');
@@ -103,16 +104,18 @@ export async function accountRoute(req,env,h){
   const sql='SELECT o.* FROM orders o JOIN customer_order_links l ON l.order_id=o.id WHERE l.user_id=?';
   if(cursor){const [date,id,...rest]=cursor.split('|');if(rest.length||!/^\d{4}-\d{2}-\d{2}T[0-9:.]+Z$/.test(date)||!uuid.test(id))throw new ApiError('Invalid project list cursor.');statement=env.DB.prepare(sql+' AND (o.created_at<? OR (o.created_at=? AND o.id<?)) ORDER BY o.created_at DESC,o.id DESC LIMIT 50').bind(user.id,date,date,id);}
   else statement=env.DB.prepare(sql+' ORDER BY o.created_at DESC,o.id DESC LIMIT 50').bind(user.id);
-  const {results}=await statement.all(),last=results.at(-1),payments=await paymentSummaries(env,results.map(row=>row.id)),unread=await unreadCounts(env,results.map(row=>row.id),'customer');return result({orders:await Promise.all(results.map(row=>accountOrder(row,payments.get(row.id),unread.get(row.id)))),next:results.length===50?last.created_at+'|'+last.id:null});
+  const {results}=await statement.all(),last=results.at(-1),payments=await paymentSummaries(env,results.map(row=>row.id)),unread=await unreadCounts(env,results.map(row=>row.id),'customer');return result({orders:await Promise.all((await orderSnapshots(env,results)).map(row=>accountOrder(row,payments.get(row.id),unread.get(row.id)))),next:results.length===50?last.created_at+'|'+last.id:null});
  }
  if(path==='/account-api/orders'&&req.method==='POST'){
   await rate(req,env,'account-create',5);const raw=await jsonBody(req);if(raw.consent!==true)throw new ApiError('Consent is required to store the project request.');if(raw.company)throw new ApiError('Unable to accept this request.');
   let o;try{o=validateOrder({...raw,name:user.name,email:user.email});}catch(e){if(e instanceof ApiError)throw e;throw new ApiError('Check the project URLs and required fields.');}
   if(!uuid.test(raw.requestId))throw new ApiError('Invalid project reference. Reload and try again.');
   const id=raw.requestId,tokenHash=await hash(random()),now=new Date().toISOString();
+  const prior=await env.DB.prepare('SELECT o.* FROM orders o JOIN customer_order_links l ON l.order_id=o.id WHERE o.id=? AND l.user_id=?').bind(id,user.id).first();o=await quoteOrder(env,o,raw,prior,ApiError);
   await env.DB.batch([
-   env.DB.prepare('INSERT INTO orders (id,token_hash,created_at,updated_at,package_id,price_usd,name,email,website,pages,topic,language,market,goals) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(id,tokenHash,now,now,o.packageId,o.price,o.name,o.email,o.website,o.pages,o.topic,o.language,o.market,o.goals),
-   env.DB.prepare('INSERT INTO customer_order_links (order_id,user_id) SELECT id,? FROM orders WHERE id=? AND token_hash=? ON CONFLICT(order_id) DO NOTHING').bind(user.id,id,tokenHash)
+   env.DB.prepare('INSERT INTO orders (id,token_hash,created_at,updated_at,package_id,price_usd,name,email,website,pages,topic,language,market,goals) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?'+(o.catalog?' WHERE EXISTS(SELECT 1 FROM service_catalog WHERE id=? AND version=?)':'')+' ON CONFLICT(id) DO NOTHING').bind(id,tokenHash,now,now,o.packageId,o.price,o.name,o.email,o.website,o.pages,o.topic,o.language,o.market,o.goals,...(o.catalog?[o.packageId,o.catalog.version]:[])),
+   env.DB.prepare('INSERT INTO customer_order_links (order_id,user_id) SELECT id,? FROM orders WHERE id=? AND token_hash=? ON CONFLICT(order_id) DO NOTHING').bind(user.id,id,tokenHash),
+   ...(o.catalog?[snapshotStatement(env,o,id,tokenHash)]:[])
   ]);
   const row=await env.DB.prepare('SELECT o.* FROM orders o JOIN customer_order_links l ON l.order_id=o.id WHERE o.id=? AND l.user_id=?').bind(id,user.id).first();
   const fields={package_id:o.packageId,website:o.website,pages:o.pages,topic:o.topic,language:o.language,market:o.market,goals:o.goals};

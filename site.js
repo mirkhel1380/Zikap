@@ -108,7 +108,7 @@ if (packageSelect && packageSummary) {
     const scope = document.createElement('p');
     const output = document.createElement('p');
     if (selected) {
-      heading.textContent = selected.name + ' · $' + selected.price + ' USD / one-time';
+      heading.textContent = selected.name + (selected.catalogVersion ? ' · $' + selected.price + ' USD / one-time' : ' · Confirm current price in your account');
       scope.textContent = selected.scope;
       output.textContent = selected.output;
     } else {
@@ -118,6 +118,7 @@ if (packageSelect && packageSummary) {
     }
     packageSummary.replaceChildren(heading, scope, output);
   };
+  document.addEventListener('zikap-catalog',event=>{if(event.detail)for(const item of event.detail){Object.assign(paidPackages[item.id],{name:item.title,price:item.price,catalogVersion:item.version});const option=packageSelect.querySelector('option[value="'+item.id+'"]');if(option)option.textContent=item.title+' / $'+item.price+' USD';}renderPackage();});
   packageSelect.addEventListener('change', renderPackage);
   renderPackage();
 }

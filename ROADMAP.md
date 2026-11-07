@@ -7,13 +7,15 @@ Reviewed November 7, 2026 against repository main. English UI, original logo, Gi
 - Customer and owner dashboards share the navy/blue workspace design. Real project lists have List/Board layouts, private report delivery, messages, action plans and version-protected owner editing/history.
 - Public inner pages match the home-page design. The home header and mobile menu expose the customer AI website review workspace.
 - Source-HTML checks sample up to three permitted public pages, show evidence/limitations and recommend optional manual services only when findings support them.
-- One-time server-priced USD packages remain audit $29, keywords $19, on-page $39 and bundle $79. No recurring billing or $1 trial has been introduced.
-- A complete isolated customer/admin/payment/message/report/revision regression passed. The latest full code verification on November 2 comprised 121 passing tests. A subsequent stuck-attempt handling fix passed its targeted AI tests.
+- Initial one-time USD prices are audit $29, keywords $19, on-page $39 and bundle $79; subsequent prices are controlled by the saved service catalog. No recurring billing or $1 trial has been introduced.
+- A complete isolated customer/admin/payment/message/report/revision regression passed. The November 7 catalog release passed 127 tests, including price-change races, immutable order prices, owner-only publishing and the complete isolated order/payment journey.
 - Stripe live configuration and the payment schema were observed ready in the November 2 deployment review. The merchant previously reported successful sandbox checkout, webhook replay and refund checks. No genuine live purchase has been independently observed; do not use an artificial live purchase for testing.
 - Durable transactional email notifications and four templates are deployed. Sending was last observed off, pending the owner’s domain, verified sender, provider key and approved delivery check.
 - Private saved website checks and limited AI explanations are deployed. AI was last observed off with its binding/schema ready, awaiting explicit confirmation of Workers Free. Limits are two attempts per customer per UTC day and twenty shared attempts. No production inference was performed during release.
 
 - Owner-only project review checklists and internal notes now persist independently in D1, with stale-write protection, private draft downloads and unsaved-edit warnings. They are excluded from customer payloads, reports, messages and order edit history.
+
+- Service names, public summaries and one-time whole-USD prices are now editable in the owner Services view. Public pages and intake load the shared catalog; quote/version checks and atomic insertion protect against stale prices. New orders snapshot package details and price, and Stripe uses that saved amount. Existing orders retain their original amount.
 
 ## Prepared for owner review
 
@@ -34,7 +36,6 @@ Before these become customer policies, confirm:
 
 ## Later implementation priorities
 
-- Editable service catalog with consistent public/intake/checkout prices and unchanged historical order prices.
 - Public support/privacy request handling, appropriate account-data export/deletion operations and defined retention controls.
 - Genuine print/PDF export pagination verification.
 - Search Console connection, live keyword/rank data, CMS publishing and subscriptions only after their scope, permissions, costs and customer terms are explicitly defined.

@@ -6,7 +6,7 @@ import {historyReady,editVersion,projectHistory} from './history.mjs';
 import {accountRoute,accountsReady} from './accounts.mjs';
 import {paymentReadiness,paymentSummaries,protectOwnerChange,stripeWebhook} from './payments.mjs';
 import {projectMessages,unreadCounts} from './messages.mjs';
-import {prices} from './catalog.mjs';
+import {prices,titles,serviceCatalog,quoteOrder,snapshotStatement,orderSnapshot,orderSnapshots} from './catalog.mjs';
 const states = ['requested','accepted','in_progress','delivered','declined'];
 class ApiError extends Error { constructor(message,status=400){super(message);this.status=status;} }
 const hash = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -42,7 +42,7 @@ async function rate(req,env,kind,limit){
   if(r.count>limit)throw new ApiError('Too many requests. Please try again in the next hour.',429);
   await env.DB.prepare('DELETE FROM rate_limits WHERE expires < ?').bind(now).run();
 }
-function receipt(row){return {id:row.id,createdAt:row.created_at,updatedAt:row.updated_at,status:row.status,packageId:row.package_id,price:row.price_usd,website:row.website,report:row.report,note:row.owner_note,revisionUsed:!!row.revision_used,revisionNote:row.revision_note,paymentCollected:false};}
+function receipt(row){return {id:row.id,createdAt:row.created_at,updatedAt:row.updated_at,status:row.status,packageId:row.package_id,price:row.price_usd,packageTitle:row.package_title||titles[row.package_id],packageDescription:row.package_description||'',website:row.website,report:row.report,note:row.owner_note,revisionUsed:!!row.revision_used,revisionNote:row.revision_note,paymentCollected:false};}
 async function admin(req,env){
   if(!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Owner access is not configured.',503);
   const token=req.headers.get('authorization')?.replace(/^Bearer /,'')||'';
@@ -80,6 +80,7 @@ export default {async scheduled(controller,env,ctx){
       return respond({service:'zikap-orders-api',version:'runtime-checks-3',ready,checks,adminSecretStatus,orders:ready,websiteAudit:ready&&typeof HTMLRewriter==='function',orderHistory:ready&&await historyReady(env),customerAccounts:ready&&await accountsReady(env),automaticUrlAudit:ready&&typeof HTMLRewriter==='function',websiteAuditScope:'up to 3 public source-HTML pages',payments:ready&&paymentSetup.ready,paymentChecks:paymentSetup.checks,emailNotifications,aiReviews},ready?200:503);
     }
     if(!env.DB||!env.ADMIN_TOKEN||env.ADMIN_TOKEN.length<32)throw new ApiError('Order service is not configured.',503);
+    if(path==='/catalog'&&req.method==='GET'){await rate(req,env,'catalog-read',600);const catalog=await serviceCatalog(env,ApiError);return respond({services:catalog.services});}
     if(path==='/website-audit')return respond(await auditRoute(req,env,{ApiError,hash,jsonBody,rate}));
     if(path==='/stripe/webhook'&&req.method==='POST')return respond(await stripeWebhook(req,env,ApiError));
     if(path.startsWith('/account-api/')){
@@ -96,7 +97,9 @@ export default {async scheduled(controller,env,ctx){
       if(clientKey&&(!uuid.test(raw.requestId)||typeof raw.receiptKey!=='string'||raw.receiptKey.length!==72||!uuid.test(raw.receiptKey.slice(0,36))||!uuid.test(raw.receiptKey.slice(36))))throw new ApiError('Invalid request receipt. Please reload and try again.');
       const id=clientKey?raw.requestId:crypto.randomUUID(),token=clientKey?raw.receiptKey:crypto.randomUUID()+crypto.randomUUID(),now=new Date().toISOString();
       const tokenHash=await hash(token);
-      const result=await env.DB.prepare('INSERT INTO orders (id,token_hash,created_at,updated_at,package_id,price_usd,name,email,website,pages,topic,language,market,goals) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING').bind(id,tokenHash,now,now,o.packageId,o.price,o.name,o.email,o.website,o.pages,o.topic,o.language,o.market,o.goals).run();
+      const prior=await env.DB.prepare('SELECT * FROM orders WHERE id=? AND token_hash=?').bind(id,tokenHash).first();o=await quoteOrder(env,o,raw,prior,ApiError);
+      const insert=env.DB.prepare('INSERT INTO orders (id,token_hash,created_at,updated_at,package_id,price_usd,name,email,website,pages,topic,language,market,goals) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?'+(o.catalog?' WHERE EXISTS(SELECT 1 FROM service_catalog WHERE id=? AND version=?)':'')+' ON CONFLICT(id) DO NOTHING').bind(id,tokenHash,now,now,o.packageId,o.price,o.name,o.email,o.website,o.pages,o.topic,o.language,o.market,o.goals,...(o.catalog?[o.packageId,o.catalog.version]:[]));
+      const result=o.catalog?(await env.DB.batch([insert,snapshotStatement(env,o,id,tokenHash)]))[0]:await insert.run();
       if(!result.meta.changes){
         const existing=await env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first();
         const fields={package_id:o.packageId,name:o.name,email:o.email,website:o.website,pages:o.pages,topic:o.topic,language:o.language,market:o.market,goals:o.goals};
@@ -111,7 +114,7 @@ export default {async scheduled(controller,env,ctx){
       const row=await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(match[1]).first();
       const token=req.headers.get('authorization')?.replace(/^Bearer /,'')||'';
       if(!row||await hash(token)!==row.token_hash)throw new ApiError('Order not found or receipt key incorrect.',404);
-      if(req.method==='GET'&&!match[2]){const payments=await paymentSummaries(env,[row.id]),payment=payments.get(row.id);return respond({...receipt(row),payment,paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')});}
+      if(req.method==='GET'&&!match[2]){const payments=await paymentSummaries(env,[row.id]),payment=payments.get(row.id);return respond({...receipt(await orderSnapshot(env,row)),payment,paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')});}
       if(req.method==='POST'&&match[2]){
         const data=await jsonBody(req),note=text(data.note,2000);
         const result=await env.DB.prepare("UPDATE orders SET revision_used=1,revision_note=?,status='revision_requested',updated_at=? WHERE id=? AND status='delivered' AND revision_used=0").bind(note,new Date().toISOString(),row.id).run();
@@ -130,7 +133,7 @@ export default {async scheduled(controller,env,ctx){
         }else result=await env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC, id DESC LIMIT 50').all();
         const last=result.results.at(-1);
         const payments=await paymentSummaries(env,result.results.map(row=>row.id)),unread=await unreadCounts(env,result.results.map(row=>row.id),'owner');
-        return respond({orders:result.results.map(({token_hash,...row})=>({...row,payment:payments.get(row.id),unreadMessages:unread.get(row.id)})),next:result.results.length===50?last.created_at+'|'+last.id:null});
+        return respond({orders:(await orderSnapshots(env,result.results)).map(({token_hash,...row})=>({...row,payment:payments.get(row.id),unreadMessages:unread.get(row.id)})),next:result.results.length===50?last.created_at+'|'+last.id:null});
       }
       const threadMatch=path.match(/^\/admin\/orders\/([a-f0-9-]{36})\/messages(\/read)?$/),threadId=threadMatch?.[1];
       if(threadId){
@@ -142,7 +145,7 @@ export default {async scheduled(controller,env,ctx){
       const id=path.match(/^\/admin\/orders\/([a-f0-9-]{36})$/)?.[1];
       if(id&&req.method==='GET'){
         const row=await env.DB.prepare('SELECT * FROM orders WHERE id=?').bind(id).first();if(!row)throw new ApiError('Order not found.',404);
-        const {token_hash,...safe}=row,payment=(await paymentSummaries(env,[id])).get(id),unreadMessages=(await unreadCounts(env,[id],'owner')).get(id);return respond({order:{...safe,payment,unreadMessages,editVersion:await editVersion(env,id)}});
+        const {token_hash,...safe}=row,payment=(await paymentSummaries(env,[id])).get(id),unreadMessages=(await unreadCounts(env,[id],'owner')).get(id);return respond({order:{...await orderSnapshot(env,safe),payment,unreadMessages,editVersion:await editVersion(env,id)}});
       }
       if(id&&req.method==='PATCH'){
         const data=await jsonBody(req,110000),status=text(data.status,30),report=text(data.report,90000,false),note=text(data.note,2000,false);

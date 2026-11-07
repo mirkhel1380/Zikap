@@ -24,12 +24,23 @@ function setup(live=false){
  env.STRIPE_HTTP=transport;return{db,env,sessions,calls,transport};
 }
 async function call(env,path,method='GET',body,cookie,owner=false){const headers={Origin:owner?site:host};if(body)headers['Content-Type']='application/json';if(cookie)headers.Cookie=cookie;if(owner)headers.Authorization='Bearer '+env.ADMIN_TOKEN;const r=await worker.fetch(new Request(host+path,{method,headers,body:body?JSON.stringify(body):undefined}),env);return{status:r.status,body:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
-async function create(env,email='fixture@example.com'){
+async function create(env,email='fixture@example.com',quote={}){
  const a=await call(env,'/account-api/register','POST',{name:'Fixture',email,password,consent:true}),id=crypto.randomUUID();assert.equal(a.status,201);
- assert.equal((await call(env,'/account-api/orders','POST',{...project,requestId:id},a.cookie)).status,201);
+ assert.equal((await call(env,'/account-api/orders','POST',{...project,...quote,requestId:id},a.cookie)).status,201);
  assert.equal((await call(env,'/admin/orders/'+id,'PATCH',{status:'accepted',report:'',note:'Scope and timing confirmed.'},null,true)).status,200);return{id,cookie:a.cookie};
 }
 const checkout=(env,a,extra={})=>call(env,'/account-api/orders/'+a.id+'/checkout','POST',{acknowledged:true,...extra},a.cookie);
+test('new catalog prices and titles are snapshotted; later edits never reprice existing Stripe checkout',async()=>{
+ const{db,env,calls}=setup();db.exec(readFileSync(new URL('../migrations/0012_service_catalog.sql',import.meta.url),'utf8'));env.SERVICE_CATALOG_REQUIRED='true';
+ const first=await create(env,'first-catalog@example.test',{quotedPrice:29,catalogVersion:1});
+ db.prepare("UPDATE service_catalog SET title='Focused review',price_usd=12,version=2 WHERE id='audit'").run();
+ const second=await create(env,'second-catalog@example.test',{quotedPrice:12,catalogVersion:2});db.prepare("UPDATE service_catalog SET title='Later title',price_usd=99,version=3 WHERE id='audit'").run();
+ assert.equal((await checkout(env,first)).status,200);assert.equal((await checkout(env,second)).status,200);
+ const params=calls.filter(x=>x.options.method==='POST').map(x=>new URLSearchParams(x.options.body));assert.equal(params[0].get('line_items[0][price_data][unit_amount]'),'2900');assert.equal(params[1].get('line_items[0][price_data][unit_amount]'),'1200');assert.equal(params[1].get('line_items[0][price_data][product_data][name]'),'Zikap / Focused review');
+ const detail=await call(env,'/account-api/orders/'+second.id,'GET',undefined,second.cookie);assert.equal(detail.body.order.packageTitle,'Focused review');assert.equal(detail.body.order.price,12);
+ assert.equal((await call(env,'/account-api/orders','POST',{...project,requestId:second.id,quotedPrice:12,catalogVersion:2},second.cookie)).body.order.price,12);
+ db.prepare('UPDATE orders SET price_usd=1 WHERE id=?').run(second.id);assert.equal((await checkout(env,second)).status,409);db.close();
+});
 function paid(s){s.status='complete';s.payment_status='paid';s.payment_intent='pi_fixture_'+s.id;return s;}
 async function webhook(env,type,object,id='evt_fixture_'+crypto.randomUUID().replaceAll('-',''),changes={}){
  const payload=JSON.stringify({id,type,data:{object}}),timestamp=changes.timestamp||Math.floor(Date.now()/1000),key=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.STRIPE_WEBHOOK_SECRET),{name:'HMAC',hash:'SHA-256'},false,['sign']);

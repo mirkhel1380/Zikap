@@ -19,7 +19,7 @@
  }
  function outline(order){
   const p=packages[order.package_id];if(!p)return '';
-  const parts=['DRAFT REPORT — REPLACE EVERY [ADD ...] BEFORE DELIVERY','Zikap / '+p.title,'Website: '+order.website,'Scope: '+p.scope,'Language: '+order.language+' / Market: '+order.market,'','REVIEW CONTEXT','Review date: [ADD date]','Reviewed pages / topic: [ADD exact scope]','Method and access limitations: [ADD what was checked and what was not]','','SUMMARY','[ADD the main observations and priorities supported by evidence]'];
+  const parts=['DRAFT REPORT — REPLACE EVERY [ADD ...] BEFORE DELIVERY','Zikap / '+(order.package_title||p.title),'Website: '+order.website,'Scope: '+p.scope,'Language: '+order.language+' / Market: '+order.market,'','REVIEW CONTEXT','Review date: [ADD date]','Reviewed pages / topic: [ADD exact scope]','Method and access limitations: [ADD what was checked and what was not]','','SUMMARY','[ADD the main observations and priorities supported by evidence]'];
   if(['audit','bundle'].includes(order.package_id))parts.push('','TECHNICAL FINDINGS','Repeat this block for each real finding:','Affected URL: [ADD URL]','Observation and evidence: [ADD evidence]','Priority and reason: [ADD priority]','Recommended action: [ADD action]','Verification: [ADD how to verify]','Checks with no issue observed: [ADD checks]','Checks not performed: [ADD limitations]');
   if(['keywords','bundle'].includes(order.package_id)){
    parts.push('','KEYWORD IDEAS','Topic: '+order.topic,'For each idea, record phrase | intent | relevance | topic group. No live metrics are connected.');
@@ -38,7 +38,7 @@
  function render(order){
   const p=packages[order.package_id],box=node('article','','owner-order'),prefix='o-'+order.id;
   const head=node('div','','owner-order-heading'),badge=node('span',states[order.status]||order.status,'delivery-status');
-  head.append(node('h2',p?p.title:order.package_id),badge);box.append(head,node('p',order.name+' · '+order.email),node('p',order.website),node('p','Order: '+order.id+' · Received: '+order.created_at,'tiny'));
+  head.append(node('h2',order.package_title||(p?p.title:order.package_id)),badge);box.append(head,node('p',order.name+' · '+order.email),node('p',order.website),node('p','Order: '+order.id+' · Received: '+order.created_at,'tiny'));
   const unreadNotice=node('p',order.unreadMessages>0?order.unreadMessages+' unread customer message'+(order.unreadMessages===1?'':'s'):'','owner-unread-notice');unreadNotice.hidden=!(order.unreadMessages>0);box.append(unreadNotice);
   const payment=order.payment;
   if(payment){const labels={unpaid:'No Stripe payment recorded',pending:'Stripe checkout pending',paid:'Stripe payment confirmed',partially_refunded:'Partially refunded in Stripe',refunded:'Refunded in Stripe'};box.append(node('p',(labels[payment.status]||payment.status)+(payment.testMode?' / TEST MODE — no real charge':'')+(payment.amountCents?' · $'+(payment.amountCents/100).toFixed(2)+' USD':''),'availability'));}
@@ -61,7 +61,7 @@
   download.addEventListener('click',()=>{if(report.value.trim())saveFile('zikap-report-draft-'+order.id+'.txt',report.value);});
   const preview=node('section','','owner-preview');preview.hidden=true;preview.setAttribute('aria-label','Unsaved customer update preview');
   previewButton.addEventListener('click',()=>{
-   preview.replaceChildren(node('span','PREVIEW / NOT SAVED','eyebrow'),node('h3','What the customer will see'),node('span',states[state.value]||'Choose a project status','delivery-status'),node('p','Website: '+order.website),node('p','Package: '+(p?p.title:order.package_id)));
+   preview.replaceChildren(node('span','PREVIEW / NOT SAVED','eyebrow'),node('h3','What the customer will see'),node('span',states[state.value]||'Choose a project status','delivery-status'),node('p','Website: '+order.website),node('p','Package: '+(order.package_title||(p?p.title:order.package_id))));
    if(note.value)preview.append(node('p',note.value));if(report.value)preview.append(node('pre',report.value,'delivery-report'));
    if(!note.value&&!report.value)preview.append(node('p','No update or report has been entered yet.'));
    preview.hidden=false;
@@ -124,6 +124,6 @@
   try{const result=await api('/admin/orders/'+id);if(version!==detailVersion||requestSession!==session)return;if(selected){dirty.delete(selected);dirty.delete(selected+':private');}for(const record of loaded.values())record.box=null;$('owner-orders').replaceChildren();selected=id;render(result.order);$('order-editor').hidden=false;window.ZikapAdminWorkspace.navigate('requests');filterOrders();if(messages)$('owner-orders').querySelector('.owner-thread').open=true;(messages?$('owner-orders').querySelector('.owner-thread'):$('order-editor')).scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});$('owner-status').textContent='Order loaded.';}catch(e){if(requestSession===session)$('owner-status').textContent=e.message;}
  }
  $('close-order').addEventListener('click',()=>{if(selected&&(dirty.has(selected)||dirty.has(selected+':private'))&&!confirm('Discard unsaved edits and close this order?'))return;if(selected){dirty.delete(selected);dirty.delete(selected+':private');const record=loaded.get(selected);if(record)record.box=null;}detailVersion++;selected=null;$('owner-orders').replaceChildren();$('order-editor').hidden=true;$('requests-view').focus();});
- addEventListener('beforeunload',event=>{if(dirty.size){event.preventDefault();event.returnValue='';}});
- window.ZikapAdminDesk={load:()=>{session++;return load();},more:()=>load(true),clear,open,api,records:()=>[...loaded.values()].map(v=>v.order),hasMore:()=>!!cursor,hasDraft:()=>dirty.size>0,packages,states};
+ addEventListener('beforeunload',event=>{if(dirty.size||window.ZikapCatalogEditor?.hasDraft()){event.preventDefault();event.returnValue='';}});
+ window.ZikapAdminDesk={load:()=>{session++;return load();},more:()=>load(true),clear,open,api,records:()=>[...loaded.values()].map(v=>v.order),hasMore:()=>!!cursor,hasDraft:()=>dirty.size>0||window.ZikapCatalogEditor?.hasDraft(),packages,states};
 })();

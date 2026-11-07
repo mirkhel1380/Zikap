@@ -1,3 +1,4 @@
+import {editCatalog} from './catalog.mjs';
 import {adminData} from './admin-data.mjs';
 import {privateWork} from './private-work.mjs';
 // A separate same-origin administration app. Customer credentials never authorize it.
@@ -46,6 +47,7 @@ export default {async fetch(req,env){const url=new URL(req.url),path=url.pathnam
    await env.DB.prepare('DELETE FROM admin_sessions WHERE user_id=?').bind(user.id).run();return json({user:{username:user.username},recoveryKey},200,await startSession({...user,version:user.version+1},env));
   }
   const user=await session(req,env);await rate(req,env,'read',300);
+  const catalogResult=await editCatalog(req,env,ErrorResponse,body);if(catalogResult!==null)return json(catalogResult);
   const workResult=await privateWork(req,env,ErrorResponse,body);if(workResult!==null)return json(workResult);
   const dataResult=await adminData(req,env,ErrorResponse);if(dataResult!==null)return json(dataResult);
   if(path==='/admin-api/session'&&req.method==='GET')return json({user:{username:user.username}});

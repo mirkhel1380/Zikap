@@ -1,4 +1,4 @@
-import {prices,titles} from './catalog.mjs';
+import {serviceCatalog} from './catalog.mjs';
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 function pagination(url,ErrorType,dateType='iso'){const raw=url.searchParams.get('before');if(!raw)return null;const [date,id,...extra]=raw.split('|');if(extra.length||!uuid.test(id||'')||(dateType==='iso'?!/^\d{4}-\d{2}-\d{2}T[0-9:.]+Z$/.test(date||''):!/^\d{1,12}$/.test(date||'')))throw new ErrorType('Invalid list cursor.');return[dateType==='iso'?date:Number(date),id];}
 export async function adminData(req,env,ErrorType){const url=new URL(req.url),path=url.pathname;if(req.method!=='GET')return null;
@@ -8,7 +8,7 @@ export async function adminData(req,env,ErrorType){const url=new URL(req.url),pa
   const unread=await env.DB.prepare("SELECT COUNT(*) total,COUNT(DISTINCT m.order_id) projects FROM project_messages m JOIN customer_order_links l ON l.order_id=m.order_id LEFT JOIN project_message_reads r ON r.message_id=m.id AND r.reader_role='owner' WHERE m.sender_role='customer' AND r.message_id IS NULL").first();
   const groups=await env.DB.prepare('SELECT package_id,COUNT(*) total FROM orders GROUP BY package_id').all();
   let payments=null;try{payments=await env.DB.prepare("SELECT COALESCE(SUM(CASE WHEN test_mode=0 AND currency='usd' AND state='paid' THEN amount_cents ELSE 0 END),0) grossCents,COALESCE(SUM(CASE WHEN test_mode=0 AND currency='usd' AND state='paid' THEN refunded_cents ELSE 0 END),0) refundedCents,COALESCE(SUM(test_mode=1),0) testRecords,COALESCE(SUM(test_mode=0 AND state IN ('pending','creating')),0) pending FROM order_payments").first();payments.netCents=payments.grossCents-payments.refundedCents;}catch{}
-  return {orders:order,customers:customers.total,unread:unread.total,unreadProjects:unread.projects,payments,packages:groups.results,catalog:Object.entries(prices).map(([id,price])=>({id,title:titles[id],price})),asOf:new Date().toISOString()};
+  return {orders:order,customers:customers.total,unread:unread.total,unreadProjects:unread.projects,payments,packages:groups.results,catalog:(await serviceCatalog(env,ErrorType)).services,asOf:new Date().toISOString()};
  }
  if(path==='/admin-api/customers'){
   const q=(url.searchParams.get('q')||'').trim();if(q.length>150)throw new ErrorType('Search must be 150 characters or fewer.');const search='%'+q.replace(/[!%_]/g,c=>'!'+c)+'%',cursor=pagination(url,ErrorType);

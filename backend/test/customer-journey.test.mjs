@@ -86,7 +86,7 @@ test('complete order journey uses the independent owner portal, payment reconcil
   const setup = await ownerCall('/admin-api/setup', 'POST', { username: 'JourneyOwner', password: 'Journey-owner-password-2026', ownerKey: f.env.ADMIN_TOKEN });
   assert.equal(setup.status, 201);
   const owner = setup.cookie, id = crypto.randomUUID(), cp = '/account-api/orders/' + id, op = '/admin/orders/' + id;
-  const brief = { requestId: id, packageId: 'audit', website: 'https://example.com', pages: 'https://example.com/', topic: 'Isolated fixture', language: 'English', market: 'Fixture', goals: 'Verify the full journey without purchasing a service.', consent: true, company: '' };
+  const brief = { requestId: id, packageId: 'audit', quotedPrice: 29, catalogVersion: 1, website: 'https://example.com', pages: 'https://example.com/', topic: 'Isolated fixture', language: 'English', market: 'Fixture', goals: 'Verify the full journey without purchasing a service.', consent: true, company: '' };
   assert.equal((await customerCall('/account-api/orders', 'POST', brief, customer)).status, 201);
   assert.equal((await customerCall('/account-api/orders', 'POST', brief, customer)).status, 201);
   assert.equal(f.db.prepare('SELECT count(*) n FROM orders').get().n, 1);

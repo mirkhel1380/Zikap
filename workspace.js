@@ -12,7 +12,7 @@
       const id=$('track-id').value.trim(),token=$('track-key').value.trim();
       if(!/^[a-f0-9-]{36}$/.test(id)||token.length!==72)throw new Error('Enter the order ID and private key from your receipt.');
       const order=await api('/orders/'+id,'GET',undefined,token);
-      const box=element('article','', 'delivery-card');box.append(element('span',states[order.status]||order.status,'delivery-status'),element('h3','Your project update'),element('p','Website: '+order.website),element('p','Package: '+order.packageId+' · $'+order.price+' USD'),element('p','Updated: '+new Date(order.updatedAt).toLocaleString()));
+      const box=element('article','', 'delivery-card');box.append(element('span',states[order.status]||order.status,'delivery-status'),element('h3','Your project update'),element('p','Website: '+order.website),element('p','Package: '+(order.packageTitle||order.packageId)+' · $'+order.price+' USD'),element('p','Updated: '+new Date(order.updatedAt).toLocaleString()));
       if(order.note)box.append(element('p',order.note));
       if(order.payment){const labels={paid:'Payment confirmed',pending:'Stripe checkout pending',unpaid:'No Stripe payment recorded',partially_refunded:'Partially refunded',refunded:'Refunded'};box.append(element('p','Payment: '+(labels[order.payment.status]||order.payment.status)+(order.payment.testMode?' (test mode; no real charge)':'')));}
       if(order.report){const report=element('pre',order.report,'delivery-report'),button=element('button','Download report','btn');button.type='button';button.addEventListener('click',()=>save('zikap-report-'+id+'.txt',order.report));box.append(report,button);}

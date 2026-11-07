@@ -1,5 +1,5 @@
 // Stripe-hosted, one-time checkout with Dashboard-managed payment methods. No card details or keys go to the browser.
-import {prices,titles} from './catalog.mjs';
+import {prices,titles,orderSnapshot} from './catalog.mjs';
 const version='2026-10-28.endive';
 export const stripeConfigured=env=>typeof env.STRIPE_SECRET_KEY==='string'&&/^(sk|rk)_(test|live)_/.test(env.STRIPE_SECRET_KEY)&&typeof env.STRIPE_WEBHOOK_SECRET==='string'&&env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_');
 const testMode=env=>!env.STRIPE_SECRET_KEY?.includes('_live_');
@@ -65,12 +65,15 @@ async function markPaid(env,row,session,event,ApiError){
 }
 async function rowFor(env,id){return env.DB.prepare('SELECT * FROM order_payments WHERE order_id=?').bind(id).first();}
 function parameters(order,generation,origin){
- const p=new URLSearchParams({mode:'payment',client_reference_id:order.id,success_url:origin+'/account/?payment=return&order='+order.id+'#projects',cancel_url:origin+'/account/?payment=cancel&order='+order.id+'#projects','metadata[orderId]':order.id,'metadata[generation]':generation,'payment_intent_data[metadata][orderId]':order.id,'line_items[0][quantity]':'1','line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':String(prices[order.package_id]*100),'line_items[0][price_data][product_data][name]':'Zikap / '+titles[order.package_id],'adaptive_pricing[enabled]':'false'});return p.toString();
+ const p=new URLSearchParams({mode:'payment',client_reference_id:order.id,success_url:origin+'/account/?payment=return&order='+order.id+'#projects',cancel_url:origin+'/account/?payment=cancel&order='+order.id+'#projects','metadata[orderId]':order.id,'metadata[generation]':generation,'payment_intent_data[metadata][orderId]':order.id,'line_items[0][quantity]':'1','line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':String(order.price_usd*100),'line_items[0][price_data][product_data][name]':'Zikap / '+(order.package_title||titles[order.package_id]),'adaptive_pricing[enabled]':'false'});return p.toString();
 }
 export async function checkout(env,order,origin,ApiError){
  if(!await paymentsReady(env))throw new ApiError('Online payment is not configured yet. No payment was collected.',503);
  if(order.status!=='accepted')throw new ApiError('Payment opens after Zikap accepts your project and confirms the scope and timing.',409);
- if(order.price_usd!==prices[order.package_id])throw new ApiError('The package price needs owner review before payment.',409);
+ const original=await orderSnapshot(env,order);
+ let savedPrice=null;try{savedPrice=await env.DB.prepare('SELECT price_usd FROM order_package_snapshots WHERE order_id=?').bind(order.id).first();}catch{}
+ if(!Object.hasOwn(prices,order.package_id)||!Number.isInteger(order.price_usd)||order.price_usd<1||order.price_usd>9999||order.price_usd!==(savedPrice?.price_usd??prices[order.package_id]))throw new ApiError('The package price needs owner review before payment.',409);
+ order=original;
  const now=Math.floor(Date.now()/1000),generation=crypto.randomUUID();
  const inserted=await env.DB.prepare("INSERT INTO order_payments (order_id,generation,state,amount_cents,currency,test_mode,request_params,started_at,lock_until) VALUES (?,?,'creating',?,'usd',?,?,?,?) ON CONFLICT(order_id) DO NOTHING").bind(order.id,generation,order.price_usd*100,testMode(env)?1:0,parameters(order,generation,origin),now,now+30).run();
  let row=await rowFor(env,order.id),owned=!!inserted.meta.changes;

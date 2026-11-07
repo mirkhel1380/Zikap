@@ -67,3 +67,11 @@ Saved report history appears within a selected order. An older report can be rea
 Open Requests, then an order, to use **Private project workspace**. Package review steps and up to 4,000 characters of internal notes are saved with **Save private work**. They are stored in `owner_project_work` (migration 0011), independently of customer-visible status, update notes, reports and report history. Saving a customer update does not save the private draft, and saving private work sends no customer update or email.
 
 Only authenticated same-origin administration sessions can use `/admin-api/projects/:id/private-work`. Reads and writes fail closed if its schema is missing. Writes require the last saved private version; a conflict preserves the draft for download before loading the latest saved version. Deleting an order cascades its private workspace. Private notes are not a password or credential store.
+
+## Editable service catalog
+
+Use **Services** to edit each fixed service’s public name (80 characters), summary (400 characters) and whole-USD one-time price ($1–$9,999). The edit does not change fixed page/keyword limits, add subscriptions, or amend an existing customer project. Publishing requires an explicit review of the displayed name and amount in the admin UI. Concurrent edits use per-package version checks and preserve the unpublished draft on conflict.
+
+Migration 0012 creates `service_catalog` with the current prices once (`INSERT OR IGNORE` preserves later edits), and `order_package_snapshots`. Both production Workers require this catalog via `SERVICE_CATALOG_REQUIRED=true`; missing or invalid catalog data fails closed. The main API exposes safe public package details at `GET /catalog`. Production new requests must submit the catalog version and quoted amount, and order insertion checks that version atomically. New orders save their package name/summary/amount separately; retries and existing Stripe sessions retain the order’s saved amount. Legacy orders without snapshots retain their original starter title and price.
+
+The public pages require JavaScript and a successful catalog read to display current prices. If unavailable, they show that the price cannot be loaded; the account form offers a reload control and does not submit an unconfirmed new price. Editing summaries is not a way to extend the fixed service scope.
