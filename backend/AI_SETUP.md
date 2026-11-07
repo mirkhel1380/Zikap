@@ -53,3 +53,11 @@ Rechecked official pricing/model documentation before activation. The previous L
 - https://developers.cloudflare.com/workers-ai/models/gemma-4-26b-a4b-it/
 - https://developers.cloudflare.com/workers-ai/get-started/workers-wrangler/
 - https://developers.cloudflare.com/changelog/product/workers-ai/
+
+## Owner operations — November 7
+
+System settings now has a private AI operations panel. `/admin-api/ai-control` requires the separate admin session and same-origin writes. GET returns only aggregate counts for the current UTC day: reserved attempts, completed, failed and in-progress saved states, remaining application attempts, next UTC reset, fixed model and limits. These are not provider neuron counters, account-wide usage or billing totals. A crashed generation may remain in-progress until the saved check is next read and reconciled.
+
+PATCH takes a boolean `paused` and integer `expectedVersion`; stale edits return 409. Migration `0015_ai_controls.sql` creates a singleton setting without resetting existing edits on replay. The customer readiness check honors it and the atomic reservation query checks the setting again to close a pause/reservation race. A pause blocks new generation, without removing source checks, cached results or reservations. Already-started inference may finish. Resume cannot bypass the original free-plan flag, AI binding or schema, and the UI asks the owner to reconfirm the free plan. If the service health cannot be reached, pausing remains allowed, while resuming is blocked.
+
+The isolated regression suite now passes 148 tests, including owner authorization/origin rejection, aggregate privacy, UTC counts, stale-write protection, resume prerequisites, migration replay and the pause/reservation race. Desktop and 390 px mobile preview checked real admin assets against labeled synthetic counts, with pause/resume and the resume confirmation exercised. No production inference, customer records or production pause/resume writes were created for demonstration. The existing AI system-card array nesting was also corrected so the separate AI status card renders.

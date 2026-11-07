@@ -1,3 +1,4 @@
+import {aiControls} from './ai-controls.mjs';
 import {supportRoute} from './support.mjs';
 import {editCatalog} from './catalog.mjs';
 import {adminData} from './admin-data.mjs';
@@ -51,6 +52,7 @@ export default {async fetch(req,env){const url=new URL(req.url),path=url.pathnam
   if(path==='/admin-api/support'||path.startsWith('/admin-api/support/'))return json(await supportRoute(req,env,user,'owner',{ApiError:ErrorResponse,jsonBody:body,rate}));
   const catalogResult=await editCatalog(req,env,ErrorResponse,body);if(catalogResult!==null)return json(catalogResult);
   const workResult=await privateWork(req,env,ErrorResponse,body);if(workResult!==null)return json(workResult);
+  const aiResult=await aiControls(req,env,ErrorResponse,body);if(aiResult!==null)return json(aiResult);
   const dataResult=await adminData(req,env,ErrorResponse);if(dataResult!==null)return json(dataResult);
   if(path==='/admin-api/session'&&req.method==='GET')return json({user:{username:user.username}});
   if(path==='/admin-api/logout'&&req.method==='POST'){await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash=?').bind(user.token_hash).run();return json({signedOut:true},200,{'Set-Cookie':cookie('',0)});}

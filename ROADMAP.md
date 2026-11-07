@@ -46,3 +46,7 @@ Before these become customer policies, confirm:
 - Search Console connection, live keyword/rank data, CMS publishing and subscriptions only after their scope, permissions, costs and customer terms are explicitly defined.
 
 No new production accounts, project messages, payments, refunds or emails should be generated merely to demonstrate these features without the owner’s specific authorization. Recovery codes and payment-linked record protections remain in place.
+
+## Owner AI operations completed
+
+System settings includes real UTC aggregate usage, remaining application attempts and a persistent version-protected pause/resume control. Pausing blocks new reservations without deleting prior results; resuming still requires primary-service free-plan/binding/schema readiness. A deployment preserves the saved pause. UI checked at desktop and mobile sizes with labeled isolated fixtures; 148 backend tests passed. Actual model generation/quality still needs a signed-in customer check. No production demonstration records were created.

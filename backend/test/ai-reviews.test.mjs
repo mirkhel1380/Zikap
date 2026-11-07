@@ -64,3 +64,15 @@ test('truncated completions, tool calls and ambiguous choices cannot become reco
   const f=fixture();t.after(()=>f.db.close());let calls=0;f.env.AI.run=async()=>{calls++;return{choices};};const u=f.user(),check=await f.create(u),path='/'+check.id+'/recommendations';await assert.rejects(f.call(u,path,'POST',consent),e=>e.status===503);assert.equal((await f.call(u,'/'+check.id)).check.recommendations,null);await assert.rejects(f.call(u,path,'POST',consent),e=>e.status===409);assert.equal(calls,1);
  }
 });
+
+test('owner pause blocks new generation, preserves cached results and survives schema replay',async t=>{
+ const f=fixture();t.after(()=>f.db.close());const u=f.user(),completed=await f.create(u);await f.call(u,'/'+completed.id+'/recommendations','POST',consent);const pending=await f.create(u);
+ f.db.prepare('UPDATE ai_runtime_settings SET paused=1,version=1 WHERE id=1').run();assert.equal((await aiReadiness(f.env)).paused,true);assert.equal((await aiReadiness(f.env)).ready,false);
+ await assert.rejects(f.call(u,'/'+pending.id+'/recommendations','POST',consent),e=>e.status===503);assert.equal(f.calls.length,1);assert.equal((await f.call(u,'/'+completed.id+'/recommendations','POST',consent)).cached,true);
+ f.db.exec(readFileSync(new URL('../migrations/0015_ai_controls.sql',import.meta.url),'utf8'));assert.equal(f.db.prepare('SELECT paused FROM ai_runtime_settings').get().paused,1);
+ f.db.prepare('UPDATE ai_runtime_settings SET paused=0 WHERE id=1').run();await f.call(u,'/'+pending.id+'/recommendations','POST',consent);assert.equal(f.calls.length,2);
+});
+test('a pause racing the reservation prevents inference and consumes no allowance',async t=>{
+ const f=fixture();t.after(()=>f.db.close());const u=f.user(),check=await f.create(u),batch=f.env.DB.batch.bind(f.env.DB);f.env.DB.batch=async statements=>{f.db.prepare('UPDATE ai_runtime_settings SET paused=1 WHERE id=1').run();return batch(statements);};
+ await assert.rejects(f.call(u,'/'+check.id+'/recommendations','POST',consent),e=>e.status===503);assert.equal(f.calls.length,0);assert.equal(f.db.prepare('SELECT COUNT(*) n FROM ai_reservations').get().n,0);
+});
