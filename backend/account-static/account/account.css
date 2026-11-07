@@ -33,3 +33,7 @@ body.signed-in{background:#f5f7f4;color:#193a30;font-size:14px;line-height:1.65}
 .project-activity summary::-webkit-details-marker{display:none}
 .project-activity summary::before{content:'+';display:inline-block;width:1.4em;color:#3265dc}
 .project-activity[open] summary::before{content:'−'}
+
+.request-draft-panel{padding:16px;margin:20px 0;border:1px solid #dce5f3;border-radius:12px;background:#f4f8ff}
+.request-draft-panel p{font-size:12px;line-height:1.7;color:#526784;margin:0 0 12px}
+.request-draft-panel .btn{font-size:12px;min-height:40px}
