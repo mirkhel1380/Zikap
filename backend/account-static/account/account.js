@@ -102,7 +102,7 @@
  function readReport(order){if(!user||!order.report)return;window.ZikapReports.open({...order,packageTitle:order.packageTitle||names[order.packageId]||order.packageId},{status:states[order.status]||order.status});}
  function renderReports(){
   const all=[...projects.values()].filter(o=>o.report),query=$('report-search').value.trim().toLowerCase(),packageId=$('report-package').value,sort=$('report-sort').value;
-  const visible=all.filter(o=>(packageId==='all'||o.packageId===packageId)&&[o.website,names[o.packageId],o.id,o.topic].join(' ').toLowerCase().includes(query));
+  const visible=all.filter(o=>(packageId==='all'||o.packageId===packageId)&&[o.website,o.packageTitle,names[o.packageId],o.packageId,o.id,o.topic].join(' ').toLowerCase().includes(query));
   visible.sort((a,b)=>sort==='website'?websiteLabel(a).localeCompare(websiteLabel(b))||a.id.localeCompare(b.id):b.updatedAt.localeCompare(a.updatedAt)||a.id.localeCompare(b.id));
   const library=$('report-library');library.replaceChildren();
   for(const order of visible){const card=node('article','','report-card');card.append(node('span','SPECIALIST REPORT','eyebrow'),node('h2',order.packageTitle||names[order.packageId]||order.packageId),node('p',order.website),node('span',states[order.status]||order.status,'status status-'+order.status),node('p','Project updated '+new Date(order.updatedAt).toLocaleDateString(),'tiny'));
@@ -127,7 +127,7 @@
   for(const order of projects.values()){
    if(['requested','accepted','in_progress','revision_requested'].includes(order.status))active++;if(order.report)delivered++;
    const isActive=['requested','accepted','in_progress','revision_requested'].includes(order.status);
-   if(query&&![order.website,names[order.packageId],order.topic,order.id].join(' ').toLowerCase().includes(query))continue;
+   if(query&&![order.website,order.packageTitle,names[order.packageId],order.packageId,order.topic,order.id].join(' ').toLowerCase().includes(query))continue;
    if(filter!=='all'&&!(filter==='active'?isActive:filter==='reports'?!!order.report:filter==='unread'?order.unreadMessages>0:order.status===filter))continue;
    shown++;
    matched.push(order);

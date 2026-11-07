@@ -102,3 +102,9 @@ Long specialist reports now offer a heading-based section selector and explicit 
 ## Customer starting guide — November 7, 2026
 
 The empty customer Overview now guides visitors through limited website review, free planning tools and optional paid specialist requests. Existing receipts and account support have direct links. It appears only after a successful empty project load and is hidden for existing projects or a failed initial load. The request form's obsolete crawler statement was corrected. Syntax and isolated desktop/mobile navigation/state checks passed; see backend/CUSTOMER_START_GUIDE.md. Domain/email setup stays deferred.
+
+## Saved service-name search — November 7, 2026
+
+Customer project and report searches now include each order's saved packageTitle as displayed, plus the package ID and existing legacy label. This fixes renamed catalog services appearing in cards but not matching their displayed name. The report search label now explicitly mentions packages; account.js is referenced as v4. Search remains local to loaded linked projects, with existing status/package filters, pagination notices and report-body exclusions preserved. No new API, ranking data, background requests or production records were introduced.
+
+Validation: account.js syntax passed. Actual customer assets were exercised with three isolated projects and two reports with renamed services. Mixed-case saved-title project search returned one correct card; legacy-title search still returned one; a conflicting status filter returned zero in Board view. Saved-title report search returned one correct report, a conflicting package filter returned zero, and text present only in the report body returned zero. Clearing filters restored the report set. The same saved-title search passed in a 390px iframe with body client/scroll widths both 375px. No backend behavior changed, so the backend test suite was not rerun for this bounded client fix.
