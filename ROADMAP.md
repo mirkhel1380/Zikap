@@ -1,39 +1,41 @@
 # Zikap remaining work
 
-Status reviewed on 2026-10-31 against the repository and completed deployment checks. English product UI; the public site, customer account and owner portal remain separate.
+Reviewed November 7, 2026 against repository main. English UI, original logo, GitHub Pages public site and separate Cloudflare customer/admin applications remain the product structure.
 
-## Public website check added
+## Completed and verified
 
-- Public URL checks now analyze up to three permitted source-HTML pages and return evidence, limitations and matched optional manual services. Home/services entry points and a dedicated checker page are connected.
-- Clean supported checks produce no paid recommendation. Package links prefill customer intake without creating orders or payments.
-- 85 automated tests pass; scanner browser checks passed on desktop and a 375px mobile body using isolated page fixtures. Existing history-specific browser verification remains separate.
-- Current prices are unchanged. Lower-cost automated offers and recurring/trial billing need a defined scope and actual merchant configuration before activation.
+- Customer and owner dashboards share the navy/blue workspace design. Real project lists have List/Board layouts, private report delivery, messages, action plans and version-protected owner editing/history.
+- Public inner pages match the home-page design. The home header and mobile menu expose the customer AI website review workspace.
+- Source-HTML checks sample up to three permitted public pages, show evidence/limitations and recommend optional manual services only when findings support them.
+- One-time server-priced USD packages remain audit $29, keywords $19, on-page $39 and bundle $79. No recurring billing or $1 trial has been introduced.
+- A complete isolated customer/admin/payment/message/report/revision regression passed. The latest full code verification on November 2 comprised 121 passing tests. A subsequent stuck-attempt handling fix passed its targeted AI tests.
+- Stripe live configuration and the payment schema were observed ready in the November 2 deployment review. The merchant previously reported successful sandbox checkout, webhook replay and refund checks. No genuine live purchase has been independently observed; do not use an artificial live purchase for testing.
+- Durable transactional email notifications and four templates are deployed. Sending was last observed off, pending the owner’s domain, verified sender, provider key and approved delivery check.
+- Private saved website checks and limited AI explanations are deployed. AI was last observed off with its binding/schema ready, awaiting explicit confirmation of Workers Free. Limits are two attempts per customer per UTC day and twenty shared attempts. No production inference was performed during release.
 
-## Previously completed
+## Prepared for owner review
 
-- Previous project report/update states are captured on future meaningful edits, including customer revision requests. Up to 20 previous states per order are retained; existing reports are not backfilled into invented historical versions.
-- The owner can inspect/download an older report and load its text into an unsaved draft. Publication remains an explicit save. Current status, owner note and formal revision state are not restored from the old snapshot.
-- The current admin editor uses a numeric editing version to reject stale saves. Save acknowledgement describes its own committed write, avoiding a later read that could silently adopt another writer's version. Legacy API writes without the optional version remain supported and are captured by the history trigger.
-- 73 automated tests pass. Browser verification of this update remains blocked by a browser-connection timeout; it must not be described as visually verified.
+`policy-review.html` links draft service terms, a privacy notice and cancellation/refund proposals. They are visibly marked not yet effective, carry noindex/nofollow and are not in the sitemap or public navigation/footer. They do not change checkout acknowledgements or create a new refund entitlement.
 
-## Next implementation priorities
+Before these become customer policies, confirm:
 
-1. **Editable service catalog.** Services currently displays the actual prices/scopes but does not edit them. A proper editor must keep public pricing, intake, server checkout validation and the historical agreed price on existing orders consistent. Changing a price must not rewrite existing orders.
-2. **Saved owner checklists and internal notes.** The delivery desk's review ticks are currently session-only. Persist explicit internal completion notes without accidentally publishing them in customer-visible updates. No fabricated research or automatic delivery.
-3. **Finish a production lifecycle check with the owner.** The owner reported saving a report and earlier local end-to-end checks passed. A complete deployed account request, owner acceptance/delivery, customer report download and scoped revision round trip still needs an owner-operated verification. Do not collect the owner's key, password or recovery code in chat, and do not create new production test records without the owner's specific authorization.
-4. **Complete browser print/PDF verification.** Report display/download/mobile checks passed previously; this browser did not expose a real print/PDF dialog. Actual exported PDF pagination remains unverified.
+1. The refund approach: the draft proposes a full refund before agreed work starts and review against work completed after it starts. This is not yet approved.
+2. The actual service operator and a public support/privacy/refund contact. Do not assume a legal entity or invent an email address.
+3. Retention periods for account/project/payment information and necessary exceptions. The current code has no general automatic deletion period.
 
-## Deliberately deferred by the owner
+## Activation dependencies deferred by the owner
 
 - Custom domain and business email.
-- Stripe merchant configuration and a merchant-operated test before live activation. Payment records and guarded checkout code exist; merchant secrets remain unconfigured and no charge/refund was performed by the agent.
+- Email sender/provider verification after the domain is ready; see backend/EMAIL_SETUP.md.
+- The account’s Workers Free plan confirmation before enabling AI; see backend/AI_SETUP.md. The activation flag is an owner assertion, not automatic billing-plan verification.
+- Observation of a genuine customer purchase and matching live webhook. Deployment readiness alone does not certify provider permissions, merchant eligibility or successful live processing.
 
-## Optional later platform work
+## Later implementation priorities
 
-- Verified email and email notifications after an email provider is selected/configured; private recovery codes are the current recovery method.
-- Live Search Console integration, full-site crawling, keyword/rank data, automated content generation or CMS publishing only after real integrations, costs and permissions are defined. The current CSV explorer and HTML tools use customer-supplied data; specialist packages require actual manual work.
-- A website content editor is not implemented by the admin dashboard. Customer impersonation, password resets by the owner and destructive account management are not exposed.
+- Persisted owner review checklists and internal notes, clearly separated from customer-visible updates.
+- Editable service catalog with consistent public/intake/checkout prices and unchanged historical order prices.
+- Public support/privacy request handling, appropriate account-data export/deletion operations and defined retention controls.
+- Genuine print/PDF export pagination verification.
+- Search Console connection, live keyword/rank data, CMS publishing and subscriptions only after their scope, permissions, costs and customer terms are explicitly defined.
 
-## Current limits
-
-Summary statistics cover the database; order/report/inbox search and CSV export cover loaded orders and are labeled accordingly. Customer and payment directories use server pagination. The separate admin uses its existing same-origin sessions. History is a rolling 20-state recovery aid, not a general database backup or a record of edits predating its activation.
+No new production accounts, project messages, payments, refunds or emails should be generated merely to demonstrate these features without the owner’s specific authorization. Recovery codes and payment-linked record protections remain in place.
