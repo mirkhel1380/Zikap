@@ -166,3 +166,7 @@ After the owner deferred policy/email activation and requested the next task, cu
 ## Uncertain request submission recovery — November 8, 2026
 
 An edited brief no longer creates a new reference while the previous submission outcome is uncertain. Customers can check the previous submission using the existing authenticated read endpoint, open a saved project and keep any newer form edits. Matching saved forms reset; 404s remain unconfirmed. Fifteen focused tests and isolated stored/not-saved/retry/mobile/expiry checks passed. Recovery remains in memory until explicit clear, reload or account cleanup. See backend/REQUEST_RECOVERY_QA.md.
+
+## Project response lifecycle — November 8, 2026
+
+Checkout preparation, payment-status checks, revisions and project reads now respect account cleanup and subsequent project/navigation choices. Late responses cannot redirect or reopen an abandoned project; loading controls lock and interrupted follow-ups show refresh guidance. Syntax and isolated close/session/navigation/normal-revision checks passed, without real financial or customer-record actions. In-flight backend operations are not cancelled. See backend/PROJECT_ASYNC_QA.md.
