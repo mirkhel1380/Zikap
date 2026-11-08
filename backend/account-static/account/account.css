@@ -39,3 +39,5 @@ body.signed-in{background:#f5f7f4;color:#193a30;font-size:14px;line-height:1.65}
 .request-draft-panel .btn{font-size:12px;min-height:40px}
 
 .session-panel{margin:24px 0}.session-list{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px}.session-entry{border:1px solid #dbe4f1;border-radius:12px;padding:16px;overflow-wrap:anywhere}.session-entry strong{display:block;color:#143d83;margin-bottom:8px}.session-entry div{font-size:.85rem;margin-top:6px}.session-panel form{max-width:560px;border-top:1px solid #dbe4f1;padding-top:16px;margin-top:20px}
+
+.request-field-error{color:#a52632;font-size:.85rem;margin:6px 0 16px}.request-field-error[hidden]{display:none}#project-form [aria-invalid="true"]{border-color:#b63745}#project-pages-hint{margin:4px 0 8px}

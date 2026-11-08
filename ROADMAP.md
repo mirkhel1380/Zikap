@@ -122,3 +122,7 @@ Customers now have a dedicated Payments view for their own saved per-project pay
 ## Public package comparison and catalog fallback — November 8, 2026
 
 Pricing now offers an accessible side-by-side comparison of the existing four starter scopes, with current catalog names/prices and links to the matching cards. Shared catalog validation rejects incomplete/duplicate IDs before updating any price; failed summaries no longer remain Loading. The keyword FAQ uses the service name instead of a price, and repeated wording was corrected. Ten public catalog script references were versioned. Three catalog regression tests and the 15-page public checker passed; isolated desktop/mobile checks covered loaded prices, incomplete/unavailable data, card navigation and horizontal table scrolling. See PACKAGE_COMPARISON_QA.md. Prices, scopes, original logo and payment behavior remain unchanged.
+
+## Request preparation validation — November 8, 2026
+
+The customer request checklist now validates actual page limits, complete URLs, exact website origin and required trimmed text, with associated inline errors and a supplied-page counter. Invalid/incomplete catalog data cannot produce an accepted client quote; older reload responses are ignored. Four new parity/catalog tests and ten account tests passed, along with syntax and isolated desktop/mobile checks. Server validation, prices, package scope and submission behavior remain unchanged. See backend/REQUEST_VALIDATION_QA.md.
