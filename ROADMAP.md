@@ -142,3 +142,7 @@ At the owner's request, the top-right customer name/initial display is replaced 
 ## Expanded My account options — November 8, 2026
 
 My account now offers ten functional shortcuts and a real saved-name editor with the recorded account creation date. Authenticated profile reads expose only name/email/date; same-origin, rate-limited name updates reject stale/invalid edits and preserve older project snapshots. Existing personal-data exports already include the current profile. All 177 tests passed, with isolated save/conflict/refresh, shortcut, draft, expiry and mobile checks. Real profile verification remains read-only. See backend/ACCOUNT_OPTIONS_QA.md.
+
+## Contextual support shortcuts — November 8, 2026
+
+My account/Your data privacy links and Payments payment/refund help now open the existing support composer with the corresponding topic. Existing drafts are preserved, pending submissions are protected and navigation sends no message or financial action. Shared customer/owner sources remain identical and versioned. Syntax and isolated desktop/mobile topic, draft-preservation and zero-write checks passed; see backend/SUPPORT_SHORTCUTS_QA.md.

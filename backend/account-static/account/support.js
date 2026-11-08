@@ -18,6 +18,14 @@
    create.addEventListener('submit',async event=>{event.preventDefault();if(busyCreate)return;const data={subject:subject.value.trim(),topic:topic.value,body:body.value.trim()},fingerprint=JSON.stringify(data);if(!pending||pending.fingerprint!==fingerprint)pending={id:makeId(),fingerprint};const current=epoch;busyCreate=true;for(const el of [subject,topic,body,createButton])el.disabled=true;createStatus.textContent='Sending your request…';try{const result=await api('','POST',{...data,requestId:pending.id});if(current!==epoch)return;pending=null;subject.value='';body.value='';createStatus.textContent='Support request saved. Replies will appear in your account.';await load();await open(result.thread.id);}catch(error){if(current===epoch&&!onError(error))createStatus.textContent=error.message;}finally{if(current===epoch){busyCreate=false;for(const el of [subject,topic,body,createButton])el.disabled=false;}}});
   }
   function emptyDetail(){detail.replaceChildren(node('span','PRIVATE CONVERSATIONS','eyebrow'),node('h3','Keep the next step clear.'),node('p','Open a request to read its conversation and latest status.'),node('p','A support status does not itself confirm a refund, account deletion or completed SEO work.','tiny'));}
+  function startRequest(value='general'){
+   if(role!=='customer'||!Object.hasOwn(topics,value))return false;
+   if(busyCreate){createStatus.textContent='Your support request is being sent. Wait for the result before starting another request.';return false;}
+   const draft=!!subject.value.trim()||!!body.value.trim();
+   if(!draft){topic.value=value;createStatus.textContent=topics[value]+' selected. Add a subject and message, then choose Send support request. Nothing has been sent.';}
+   else createStatus.textContent='Your existing draft is kept, including its '+topics[topic.value]+' topic. Review it before changing the topic or sending.';
+   subject.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});subject.focus({preventScroll:true});return true;
+  }
   function hasReplyDraft(){return !!detail.querySelector('.project-thread textarea')?.value.trim()||statusDirty;}
   function hasDraft(){return !!subject?.value.trim()||!!body?.value.trim()||hasReplyDraft();}
   function renderList(){list.replaceChildren();for(const row of rows.values()){const card=button('',()=>open(row.id),'support-ticket'+(selected===row.id?' selected':''));card.append(node('span',topics[row.topic]||row.topic,'support-topic'),node('strong',row.subject),node('span',states[row.status]||row.status,'support-state'),node('small',new Date(row.updatedAt).toLocaleString()));if(role==='owner'&&row.customer)card.append(node('small',row.customer.name+' / '+row.customer.email));if(row.unreadCount)card.append(node('span',row.unreadCount+' unread','support-unread'));list.append(card);}if(!rows.size)list.append(node('p','No requests match this view.','support-empty'));more.hidden=!cursor;}
@@ -31,6 +39,6 @@
   for(const select of [stateFilter.select,topicFilter.select])select.addEventListener('change',()=>{cursor=null;load();});
   function clear(){epoch++;listVersion++;detailVersion++;metadataVersion++;rows.clear();selected=null;cursor=null;loaded=false;statusDirty=false;pending=null;busyCreate=false;if(subject){subject.value='';body.value='';topic.value='general';createStatus.textContent='';for(const el of [subject,topic,body,createButton])el.disabled=false;}stateFilter.select.value=topicFilter.select.value='all';metrics.replaceChildren();list.replaceChildren();status.textContent='';more.hidden=true;emptyDetail();}
   addEventListener('beforeunload',event=>{if(hasDraft()){event.preventDefault();event.returnValue='';}});emptyDetail();
-  return {load,open,clear,hasDraft,ensureLoaded:()=>{if(!loaded)return load();}};
+  return {load,open,clear,hasDraft,startRequest,ensureLoaded:()=>{if(!loaded)return load();}};
  }};
 })();
