@@ -146,3 +146,7 @@ My account now offers ten functional shortcuts and a real saved-name editor with
 ## Contextual support shortcuts — November 8, 2026
 
 My account/Your data privacy links and Payments payment/refund help now open the existing support composer with the corresponding topic. Existing drafts are preserved, pending submissions are protected and navigation sends no message or financial action. Shared customer/owner sources remain identical and versioned. Syntax and isolated desktop/mobile topic, draft-preservation and zero-write checks passed; see backend/SUPPORT_SHORTCUTS_QA.md.
+
+## Prepared export lifecycle — November 8, 2026
+
+Your data now shows actual prepared-file size, a Clear prepared file control and a ten-minute local link lifetime with click-time expiry checks. Session/page cleanup and run-scoped timeout guards prevent stale links or cancelled work from restoring a file. Four new controller tests and an isolated native JSON download/clear/mobile check passed. Saved device files and backend records are unchanged. Ready-file screenshots use labeled synthetic fixtures; production verification remains read-only. See backend/EXPORT_LIFECYCLE_QA.md.
