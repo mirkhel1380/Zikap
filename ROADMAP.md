@@ -126,3 +126,7 @@ Pricing now offers an accessible side-by-side comparison of the existing four st
 ## Request preparation validation — November 8, 2026
 
 The customer request checklist now validates actual page limits, complete URLs, exact website origin and required trimmed text, with associated inline errors and a supplied-page counter. Invalid/incomplete catalog data cannot produce an accepted client quote; older reload responses are ignored. Four new parity/catalog tests and ten account tests passed, along with syntax and isolated desktop/mobile checks. Server validation, prices, package scope and submission behavior remain unchanged. See backend/REQUEST_VALIDATION_QA.md.
+
+## Account recovery file reader — November 8, 2026
+
+The recovery form can locally open the existing account recovery text file and fill the email plus masked code, without uploading it or submitting recovery automatically. Parser limits, format checks and delayed-read/manual-edit guards protect the flow; auth forms now also lock during a request and ignore results after account cleanup. Four reader tests and ten account tests passed; isolated native file-chooser and mobile checks passed. No real credentials, sessions or accounts were changed for verification. See backend/RECOVERY_FILE_QA.md. Email/domain setup stays deferred.
