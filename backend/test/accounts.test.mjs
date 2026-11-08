@@ -41,7 +41,7 @@ test('projects are isolated by account and retries do not create or claim anothe
  assert.equal((await call(env,'/account-api/orders','POST',{...project,requestId:id},b.cookie)).status,409);
  assert.equal((await call(env,'/account-api/orders','POST',{...project,requestId:id},a.cookie)).status,201);assert.equal(db.prepare('SELECT count(*) AS n FROM orders').get().n,1);
  assert.equal((await call(env,'/account-api/orders','POST',{...project,requestId:id,goals:'Different request'},a.cookie)).status,409);
- assert.equal((await call(env,'/account-api/orders','GET',null,a.cookie)).body.orders.length,1);db.close();
+ assert.equal((await call(env,'/account-api/orders','GET',null,a.cookie)).body.orders.length,1);assert.equal((await call(env,'/account-api/orders/'+id,'GET',null,a.cookie)).body.order.goals,project.goals);db.close();
 });
 test('legacy orders require the private receipt; email and ID alone never attach an order',async()=>{
  const{env,db}=setupAccounts(),a=await register(env),b=await register(env,'two@example.com');

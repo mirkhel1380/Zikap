@@ -162,3 +162,7 @@ At the owner's request to start remaining-work item 2, the three policy texts an
 ## Public package handoff through account access — November 8, 2026
 
 After the owner deferred policy/email activation and requested the next task, customer-journey review found that the first signed-out session reset erased the package and public URL selection. A one-use sanitized in-memory handoff now applies after authentication, removes consumed link fields, preserves explicit consent/quote validation and clears across account cleanup. Closing the recovery-code panel resumes the intended workspace view. Three new tests plus four validation regressions and isolated sign-in/retry/registration/expiry/mobile flows passed with zero order writes. See backend/INTAKE_HANDOFF_QA.md.
+
+## Uncertain request submission recovery — November 8, 2026
+
+An edited brief no longer creates a new reference while the previous submission outcome is uncertain. Customers can check the previous submission using the existing authenticated read endpoint, open a saved project and keep any newer form edits. Matching saved forms reset; 404s remain unconfirmed. Fifteen focused tests and isolated stored/not-saved/retry/mobile/expiry checks passed. Recovery remains in memory until explicit clear, reload or account cleanup. See backend/REQUEST_RECOVERY_QA.md.
