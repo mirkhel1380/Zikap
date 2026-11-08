@@ -138,3 +138,7 @@ Overview now highlights real unread project messages, accepted pending/unpaid ch
 ## Customer My account area — November 8, 2026
 
 At the owner's request, the top-right customer name/initial display is replaced by a visible My account link. Actual name/email and existing personal functions now live in an organized Personal details / Security / Your data area, with Sign out inside the page. Keyboard tab controls, mobile layout, old security links and profile cleanup were checked using actual assets with isolated fixtures; syntax/duplicate-ID checks passed. No backend or authentication rules changed. See backend/MY_ACCOUNT_QA.md.
+
+## Expanded My account options — November 8, 2026
+
+My account now offers ten functional shortcuts and a real saved-name editor with the recorded account creation date. Authenticated profile reads expose only name/email/date; same-origin, rate-limited name updates reject stale/invalid edits and preserve older project snapshots. Existing personal-data exports already include the current profile. All 177 tests passed, with isolated save/conflict/refresh, shortcut, draft, expiry and mobile checks. Real profile verification remains read-only. See backend/ACCOUNT_OPTIONS_QA.md.

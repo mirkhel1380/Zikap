@@ -105,3 +105,27 @@ test('a session revoked during password verification cannot sign out a newer ses
   const result=await call(env,'/account-api/sessions/revoke-others','POST',{currentPassword:password},a.cookie);assert.equal(result.status,401);assert.equal((await call(env,'/account-api/session','GET',null,newer.cookie)).status,200);
  }finally{db.close();}
 });
+
+test('profile dates are private and name edits are account-scoped, stale-protected and preserve old project records',async()=>{
+ const {env,db}=setupAccounts();try{
+  const a=await register(env),b=await register(env,'two@example.com');
+  const projectResult=await call(env,'/account-api/orders','POST',{...project,requestId:crypto.randomUUID()},a.cookie);assert.equal(projectResult.status,201);
+  const read=await call(env,'/account-api/profile','GET',null,a.cookie);assert.equal(read.status,200);assert.deepEqual(Object.keys(read.body.profile).sort(),['createdAt','email','name']);assert.equal(read.body.profile.email,'one@example.com');assert.equal(Number.isFinite(Date.parse(read.body.profile.createdAt)),true);
+  assert.equal((await call(env,'/account-api/profile')).status,401);
+  assert.equal((await call(env,'/account-api/profile','PATCH',{name:'Updated customer',expectedName:'Fixture customer'},a.cookie,'https://evil.example')).status,403);
+  const saved=await call(env,'/account-api/profile','PATCH',{name:'  Updated customer  ',expectedName:'Fixture customer'},a.cookie);assert.equal(saved.status,200);assert.equal(saved.body.profile.name,'Updated customer');assert.equal(saved.body.profile.email,'one@example.com');
+  assert.equal((await call(env,'/account-api/session','GET',null,a.cookie)).body.user.name,'Updated customer');assert.equal((await call(env,'/account-api/session','GET',null,b.cookie)).body.user.name,'Fixture customer');
+  assert.equal(db.prepare('SELECT name FROM orders WHERE id=?').get(projectResult.body.order.id).name,'Fixture customer');
+  assert.equal((await call(env,'/account-api/profile','PATCH',{name:'Stale edit',expectedName:'Fixture customer'},a.cookie)).status,409);
+  assert.equal((await call(env,'/account-api/profile','PATCH',{name:'Other account',expectedName:'Updated customer'},b.cookie)).status,409);
+  assert.equal((await call(env,'/account-api/profile','GET',null,a.cookie)).body.profile.name,'Updated customer');
+ }finally{db.close();}
+});
+test('profile editing rejects invalid names, credential changes and unsupported methods',async()=>{
+ const {env,db}=setupAccounts();try{const a=await register(env);
+  for(const name of ['', '   ', 'x'.repeat(101), 'Two\nlines', 'A\u0000B'])assert.equal((await call(env,'/account-api/profile','PATCH',{name,expectedName:'Fixture customer'},a.cookie)).status,400);
+  for(const patch of [{name:'New',expectedName:'Fixture customer',email:'changed@example.com'},{name:'New',expectedName:null}])assert.equal((await call(env,'/account-api/profile','PATCH',patch,a.cookie)).status,400);
+  for(const method of ['POST','DELETE'])assert.equal((await call(env,'/account-api/profile',method,{},a.cookie)).status,405);
+  assert.equal((await call(env,'/account-api/profile','GET',null,a.cookie)).body.profile.name,'Fixture customer');
+ }finally{db.close();}
+});

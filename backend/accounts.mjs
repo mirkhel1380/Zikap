@@ -82,6 +82,16 @@ export async function accountRoute(req,env,h){
   return result({user:publicUser(user),recoveryKey:newCode},200,await startSession(user));
  }
  const user=await session();
+ if(path==='/account-api/profile'){
+  const profile=async()=>await env.DB.prepare('SELECT name,email,created_at createdAt FROM customer_users WHERE id=?').bind(user.id).first();
+  if(req.method==='GET'){await rate(req,env,'account-read',240);return result({profile:await profile()});}
+  if(req.method!=='PATCH')throw new ApiError('Method not allowed.',405);
+  await rate(req,env,'account-profile',10);const data=await jsonBody(req,2000);
+  if(Object.keys(data).some(key=>!['name','expectedName'].includes(key))||typeof data.name!=='string'||!data.name.trim()||data.name.trim().length>100||/[\x00-\x1f\x7f]/.test(data.name)||typeof data.expectedName!=='string'||data.expectedName.length>100)throw new ApiError('Enter a name of 1–100 characters on one line. Only your display name can be changed here.');
+  const saved=await env.DB.prepare('UPDATE customer_users SET name=? WHERE id=? AND name=?').bind(data.name.trim(),user.id,data.expectedName).run();
+  if(!saved.meta.changes)throw new ApiError('Your profile changed in another page. Refresh the saved details, review your draft name and save again.',409);
+  return result({profile:await profile()});
+ }
  async function sessionList(){
   const now=Math.floor(Date.now()/1000),{results}=await env.DB.prepare('SELECT created_at createdAt,expires_at expiresAt,token_hash=? current FROM customer_sessions WHERE user_id=? AND expires_at>? ORDER BY current DESC,created_at DESC,rowid DESC LIMIT 5').bind(user.token_hash,user.id,now).all();
   return {sessions:results.map(row=>({createdAt:row.createdAt,expiresAt:row.expiresAt,current:!!row.current})),limit:5,asOf:now};
