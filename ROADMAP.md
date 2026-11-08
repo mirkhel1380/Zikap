@@ -154,3 +154,7 @@ Your data now shows actual prepared-file size, a Clear prepared file control and
 ## Section-specific workspace refresh — November 8, 2026
 
 Header Refresh now reads the active profile, session dates, payment records, support list or project list, with a matching accessible label and contextual header text. It is hidden where explicit form/local/AI/export controls apply. In-flight/epoch guards and current-view rendering prevent late project responses from overwriting another view's header. Syntax and isolated endpoint-counter, draft-preservation, hidden-control, late-response and mobile checks passed with zero writes. See backend/CONTEXT_REFRESH_QA.md.
+
+## Service, privacy and refund text review — November 8, 2026
+
+At the owner's request to start remaining-work item 2, the three policy texts and overview were aligned with current packages, My account, profile/session/recovery controls, prepared-export lifetimes and support/payment routes. Approved refund/retention principles remain intact. Conditional privacy-request reconsideration and clearer Stripe refund handling were checked against primary official sources. A contents menu, scope/customer-route tables and print styling were added. Public 15-page checks, four draft-document checks and desktop/mobile review passed. The policy set remains noindex review drafts, without a new effective date or public adoption: verified contact handling and final operational/applicability review remain outstanding. See backend/POLICY_CONTENT_REVIEW_2026-11-08.md.
