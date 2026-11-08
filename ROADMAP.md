@@ -170,3 +170,7 @@ An edited brief no longer creates a new reference while the previous submission 
 ## Project response lifecycle — November 8, 2026
 
 Checkout preparation, payment-status checks, revisions and project reads now respect account cleanup and subsequent project/navigation choices. Late responses cannot redirect or reopen an abandoned project; loading controls lock and interrupted follow-ups show refresh guidance. Syntax and isolated close/session/navigation/normal-revision checks passed, without real financial or customer-record actions. In-flight backend operations are not cancelled. See backend/PROJECT_ASYNC_QA.md.
+
+## Unsent clarification drafts — November 8, 2026
+
+Formal revision drafts now survive in-tab project refresh/close/reopen and workspace navigation, separately for each project. Successful matching submissions clear only the submitted draft; newer different notes remain explicitly unsent, even after the included revision is used. Explicit clearing, logout/unload warnings and account cleanup respect this memory-only lifecycle. Fifteen focused tests and isolated desktop/delayed-response/mobile checks passed without real revision/payment writes. See backend/REVISION_DRAFT_QA.md.
