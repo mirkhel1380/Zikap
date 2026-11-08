@@ -130,3 +130,7 @@ The customer request checklist now validates actual page limits, complete URLs, 
 ## Account recovery file reader — November 8, 2026
 
 The recovery form can locally open the existing account recovery text file and fill the email plus masked code, without uploading it or submitting recovery automatically. Parser limits, format checks and delayed-read/manual-edit guards protect the flow; auth forms now also lock during a request and ignore results after account cleanup. Four reader tests and ten account tests passed; isolated native file-chooser and mobile checks passed. No real credentials, sessions or accounts were changed for verification. See backend/RECOVERY_FILE_QA.md. Email/domain setup stays deferred.
+
+## Customer overview next steps — November 8, 2026
+
+Overview now highlights real unread project messages, accepted pending/unpaid checkout review and delivered reports, with one prioritized suggestion per loaded project and a six-card limit. Paid/refunded projects receive no repayment prompt. Loading/error states disable stale panel actions; initial unavailable summary figures are unknown rather than zero. Empty accounts retain the starting guide, and session cleanup clears suggestions. Three new suggestion tests plus eight adjacent frontend regressions passed (11 total), with isolated navigation, outage/recovery, empty/paginated, mobile and session-cleanup checks. No new provider/AI call or financial operation was introduced. See backend/NEXT_STEPS_QA.md.

@@ -4,7 +4,7 @@
  const names={audit:'Technical SEO Starter',keywords:'Keyword Research Starter',onpage:'On-page SEO Starter',bundle:'SEO Starter Bundle'};
  const scopes={audit:'One website, up to 5 public URLs. A prioritized technical findings report and action checklist.',keywords:'25 curated keyword ideas for one topic, language and market; mapped to up to 5 pages. No live volume or difficulty data.',onpage:'Proposed metadata, content and internal-link improvements for up to 3 existing pages. No publishing or full article writing.',bundle:'Technical review of up to 5 URLs, 25 keyword ideas with a page map, and on-page briefs for up to 3 pages on the same website.'};
  const states={requested:'Request received',accepted:'Accepted',in_progress:'In progress',delivered:'Report delivered',revision_requested:'Revision requested',declined:'Declined'};
- let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='',paymentTestMode=null,detailVersion=0,requestSubmitting=false,receiptReadVersion=0,authBusy=false,authRequestVersion=0;
+ let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='',paymentTestMode=null,detailVersion=0,requestSubmitting=false,receiptReadVersion=0,authBusy=false,authRequestVersion=0,projectsReadState='loading',projectsHaveSnapshot=false;
  const projects=new Map(),requestBaseline={packageId:'audit',language:'English'};let currentCatalog=null,catalogReadVersion=0;
  const makeUUID=()=>{if(typeof crypto.randomUUID==='function')return crypto.randomUUID();const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);};
  const node=(tag,value,cls)=>{const n=document.createElement(tag);n.textContent=value;if(cls)n.className=cls;return n;};
@@ -17,6 +17,7 @@
   if(!response.ok){const e=new Error(data.error||'The account service is unavailable.');e.status=response.status;throw e;}return data;
  }
  const support=window.ZikapSupport.mount($('customer-support'),{role:'customer',api:(suffix,method,body)=>api('/support'+suffix,method,body),onError:sessionError});
+ const nextSteps=window.ZikapNextSteps.mount($('customer-next-steps'),{openProject});
  const billing=window.ZikapPayments.mount($('customer-payments'),{api,openProject,onError:sessionError});
  const accountSessions=window.ZikapSessions.mount($('account-sessions-panel'),{api,onError:sessionError});
  const recoveryFile=window.ZikapRecoveryFile.mount({file:$('recover-file'),email:$('recover-email'),code:$('recover-code'),message:$('recover-file-message'),alive:()=>!user&&!authBusy&&!$('recover-form').hidden});
@@ -40,7 +41,7 @@
   $('show-login').setAttribute('aria-pressed',String(mode==='login'));$('show-register').setAttribute('aria-pressed',String(mode==='register'));
  }
  function clearAccount(message){
-  authRequestVersion++;authLock(false);recoveryFile.clear();
+  authRequestVersion++;authLock(false);recoveryFile.clear();nextSteps.clear();projectsReadState='loading';projectsHaveSnapshot=false;
   support.clear();billing.clear();accountSessions.clear();$('logout').disabled=false;for(const kind of ['password','recovery']){$(kind+'-form').querySelector('button[type=submit]').disabled=false;$(kind==='password'?'password-message':'code-message').textContent='';}closeReport();$('getting-started').hidden=true;document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
   document.body.classList.remove('signed-in','sidebar-open');document.dispatchEvent(new Event('zikap-session-cleared'));user=null;epoch++;receiptReadVersion++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
   for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('account-name').textContent='My account';$('account-avatar').textContent='Z';$('greeting').textContent='Welcome back.';$('profile-line').textContent='';$('nav-unread-badge').hidden=true;$('unread-count').textContent='0';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
@@ -53,7 +54,7 @@
   recoveryCode=code;$('recovery-key').value=code;$('recovery-key').type='password';$('toggle-recovery').textContent='Show recovery code';$('toggle-recovery').setAttribute('aria-pressed','false');$('recovery-saved').checked=false;$('close-recovery').disabled=true;$('recovery-message').textContent='';$('recovery-box').hidden=false;reveal($('recovery-box'));
  }
  async function enter(data){
-  recoveryFile.clear();clearAuthSecrets();document.body.classList.add('signed-in');user=data.user;epoch++;pending=null;billing.clear();accountSessions.clear();$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
+  recoveryFile.clear();clearAuthSecrets();projects.clear();nextSteps.clear();projectsReadState='loading';projectsHaveSnapshot=false;document.body.classList.add('signed-in');user=data.user;epoch++;pending=null;billing.clear();accountSessions.clear();$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
   $('account-name').textContent=user.name;$('account-avatar').textContent=user.name.trim().slice(0,1).toUpperCase();$('greeting').textContent='Welcome back, '+user.name.split(/\s+/)[0]+'.';setView();updateRequestDraft();document.dispatchEvent(new Event('zikap-session-ready'));$('profile-line').textContent=user.name+' · '+user.email;
   if(data.recoveryKey)showRecovery(data.recoveryKey);await loadProjects();
   const params=new URLSearchParams(location.search),id=params.get('order');
@@ -115,7 +116,9 @@
   const status=node('span',states[order.status]||order.status,'status status-'+order.status),meta=node('div','','project-meta');meta.append(node('strong','$'+order.price+' USD'),node('span',new Date(order.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric'})));
   const open=button('View project');open.setAttribute('aria-label','View project for '+websiteLabel(order));open.addEventListener('click',()=>openProject(order.id));card.append(identity,status,meta,open);return card;
  }
+ function renderNextSteps(){nextSteps.render([...projects.values()],{state:projectsReadState,hasMore:!!cursor});if(!projectsHaveSnapshot){for(const id of ['project-count','active-count','report-count','unread-count','report-percentage'])$(id).textContent='—';$('report-ring').style.setProperty('--report-percent','0%');}}
  function renderOverview(){
+  renderNextSteps();
   const all=[...projects.values()],recent=$('recent-projects'),updates=$('recent-updates'),library=$('report-library');$('getting-started').hidden=all.length>0||!!cursor;recent.replaceChildren();updates.replaceChildren();library.replaceChildren();
   all.slice().sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,4).forEach(order=>recent.append(projectRow(order,true)));
   const reports=all.filter(o=>o.report);renderReports();
@@ -170,10 +173,10 @@
   renderOverview();$('project-count').textContent=String(projects.size);$('active-count').textContent=String(active);$('report-count').textContent=String(delivered);$('more-projects').hidden=!cursor;
  }
  async function loadProjects(more=false){
-  if(!user)return;const version=++listVersion,currentEpoch=epoch;$('projects-message').textContent='Loading your projects…';$('refresh-projects').disabled=true;$('more-projects').disabled=true;$('more-reports').disabled=true;$('workspace-refresh').disabled=true;$('workspace-sync').textContent='Updating projects…';
-  try{const data=await api('/orders'+(more&&cursor?'?before='+encodeURIComponent(cursor):''));if(currentEpoch!==epoch||version!==listVersion)return;if(!more)projects.clear();for(const order of data.orders)projects.set(order.id,order);cursor=data.next;renderProjects();$('workspace-sync').textContent='Projects up to date';$('projects-message').textContent='Your project list is up to date.';}
-  catch(e){if(currentEpoch===epoch&&!sessionError(e)){$('projects-message').textContent=errorText(e);$('workspace-sync').textContent='Could not refresh projects. Try Refresh.';}}
-  finally{if(currentEpoch===epoch){$('refresh-projects').disabled=false;$('more-projects').disabled=false;$('more-reports').disabled=false;$('workspace-refresh').disabled=false;}}
+  if(!user)return;const version=++listVersion,currentEpoch=epoch;$('projects-message').textContent='Loading your projects…';$('refresh-projects').disabled=true;$('more-projects').disabled=true;$('more-reports').disabled=true;$('workspace-refresh').disabled=true;$('workspace-sync').textContent='Updating projects…';projectsReadState='loading';renderNextSteps();
+  try{const data=await api('/orders'+(more&&cursor?'?before='+encodeURIComponent(cursor):''));if(currentEpoch!==epoch||version!==listVersion)return;if(!more)projects.clear();for(const order of data.orders)projects.set(order.id,order);cursor=data.next;projectsHaveSnapshot=true;projectsReadState='ready';renderProjects();$('workspace-sync').textContent='Projects up to date';$('projects-message').textContent='Your project list is up to date.';}
+  catch(e){if(currentEpoch===epoch&&version===listVersion&&!sessionError(e)){projectsReadState='error';renderNextSteps();$('projects-message').textContent=errorText(e);$('workspace-sync').textContent='Could not refresh projects. Try Refresh.';}}
+  finally{if(currentEpoch===epoch&&version===listVersion){$('refresh-projects').disabled=false;$('more-projects').disabled=false;$('more-reports').disabled=false;$('workspace-refresh').disabled=false;}}
  }
  $('workspace-refresh').addEventListener('click',()=>loadProjects());
  for(const layout of ['list','board'])$('project-'+layout+'-view').addEventListener('click',()=>{projectLayout=layout;for(const item of ['list','board'])$('project-'+item+'-view').setAttribute('aria-pressed',String(item===layout));renderProjects();});
