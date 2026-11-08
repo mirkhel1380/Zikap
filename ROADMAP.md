@@ -134,3 +134,7 @@ The recovery form can locally open the existing account recovery text file and f
 ## Customer overview next steps — November 8, 2026
 
 Overview now highlights real unread project messages, accepted pending/unpaid checkout review and delivered reports, with one prioritized suggestion per loaded project and a six-card limit. Paid/refunded projects receive no repayment prompt. Loading/error states disable stale panel actions; initial unavailable summary figures are unknown rather than zero. Empty accounts retain the starting guide, and session cleanup clears suggestions. Three new suggestion tests plus eight adjacent frontend regressions passed (11 total), with isolated navigation, outage/recovery, empty/paginated, mobile and session-cleanup checks. No new provider/AI call or financial operation was introduced. See backend/NEXT_STEPS_QA.md.
+
+## Customer My account area — November 8, 2026
+
+At the owner's request, the top-right customer name/initial display is replaced by a visible My account link. Actual name/email and existing personal functions now live in an organized Personal details / Security / Your data area, with Sign out inside the page. Keyboard tab controls, mobile layout, old security links and profile cleanup were checked using actual assets with isolated fixtures; syntax/duplicate-ID checks passed. No backend or authentication rules changed. See backend/MY_ACCOUNT_QA.md.
