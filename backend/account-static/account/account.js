@@ -5,6 +5,7 @@
  const scopes={audit:'One website, up to 5 public URLs. A prioritized technical findings report and action checklist.',keywords:'25 curated keyword ideas for one topic, language and market; mapped to up to 5 pages. No live volume or difficulty data.',onpage:'Proposed metadata, content and internal-link improvements for up to 3 existing pages. No publishing or full article writing.',bundle:'Technical review of up to 5 URLs, 25 keyword ideas with a page map, and on-page briefs for up to 3 pages on the same website.'};
  const states={requested:'Request received',accepted:'Accepted',in_progress:'In progress',delivered:'Report delivered',revision_requested:'Revision requested',declined:'Declined'};
  let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='',paymentTestMode=null,detailVersion=0,requestSubmitting=false,receiptReadVersion=0,authBusy=false,authRequestVersion=0,projectsReadState='loading',projectsHaveSnapshot=false,accountTab='profile',activeView='overview';
+ const intakeHandoff=window.ZikapIntake.create(location.search);
  const headerRefreshBusy=new Set();
  const projects=new Map(),requestBaseline={packageId:'audit',language:'English'};let currentCatalog=null,catalogReadVersion=0;
  const makeUUID=()=>{if(typeof crypto.randomUUID==='function')return crypto.randomUUID();const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);};
@@ -42,7 +43,10 @@
   ['login','register','recover'].forEach(name=>{$(name+'-form').hidden=name!==mode;});
   $('show-login').setAttribute('aria-pressed',String(mode==='login'));$('show-register').setAttribute('aria-pressed',String(mode==='register'));
  }
- function clearAccount(message){
+ function clearIntakeURL(){const url=new URL(location.href);for(const key of ['package','website','pages'])url.searchParams.delete(key);history.replaceState(null,'',url.pathname+url.search+url.hash);}
+ function applyIntakeHandoff(){const intent=intakeHandoff.take();clearIntakeURL();if(!intent)return;if(intent.packageId){$('project-package').value=intent.packageId;requestBaseline.packageId=intent.packageId;}if(intent.website)$('project-website').value=intent.website;if(intent.pages)$('project-pages').value=intent.pages;scope();if(intent.packageId||intent.website)$('project-message').textContent='Your linked selection is ready. Review the package, current price and page URLs before submitting. Nothing has been submitted or charged.';}
+ function clearAccount(message,{preserveInitialSelection=false}={}){
+  if(!preserveInitialSelection){intakeHandoff.clear();clearIntakeURL();}$('intake-selection-notice').hidden=!intakeHandoff.hasSelection();
   authRequestVersion++;headerRefreshBusy.clear();activeView='overview';authLock(false);recoveryFile.clear();profileEditor.clear();$('profile-created-at').textContent='—';nextSteps.clear();projectsReadState='loading';projectsHaveSnapshot=false;
   support.clear();billing.clear();accountSessions.clear();$('logout').disabled=false;for(const kind of ['password','recovery']){$(kind+'-form').querySelector('button[type=submit]').disabled=false;$(kind==='password'?'password-message':'code-message').textContent='';}closeReport();$('getting-started').hidden=true;document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
   document.body.classList.remove('signed-in','sidebar-open');document.dispatchEvent(new Event('zikap-session-cleared'));user=null;epoch++;receiptReadVersion++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
@@ -57,7 +61,7 @@
  }
  async function enter(data){
   recoveryFile.clear();clearAuthSecrets();profileEditor.clear();$('profile-created-at').textContent='—';projects.clear();nextSteps.clear();projectsReadState='loading';projectsHaveSnapshot=false;document.body.classList.add('signed-in');user=data.user;epoch++;pending=null;billing.clear();accountSessions.clear();$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
-  $('profile-full-name').textContent=user.name;$('profile-email').textContent=user.email;$('profile-monogram').textContent=user.name.trim().slice(0,1).toUpperCase();setAccountTab('profile');$('greeting').textContent='Welcome back, '+user.name.split(/\s+/)[0]+'.';setView();updateRequestDraft();document.dispatchEvent(new Event('zikap-session-ready'));
+  $('profile-full-name').textContent=user.name;$('profile-email').textContent=user.email;$('profile-monogram').textContent=user.name.trim().slice(0,1).toUpperCase();setAccountTab('profile');$('greeting').textContent='Welcome back, '+user.name.split(/\s+/)[0]+'.';applyIntakeHandoff();$('intake-selection-notice').hidden=true;setView();updateRequestDraft();document.dispatchEvent(new Event('zikap-session-ready'));
   if(data.recoveryKey)showRecovery(data.recoveryKey);await loadProjects();
   const params=new URLSearchParams(location.search),id=params.get('order');
   if(params.get('payment')==='return'&&/^[a-f0-9-]{36}$/.test(id||'')){try{await api('/orders/'+id+'/payment-status','POST',{});await loadProjects();await openProject(id);}catch(e){$('projects-message').textContent='Check your project payment status. '+errorText(e);}}
@@ -78,8 +82,7 @@
  function scope(){const value=$('project-package').value,item=currentCatalog?.find(s=>s.id===value);$('package-scope').textContent=item?item.title+' / $'+item.price+' USD / one-time. '+item.description+' '+scopes[value]:'Current package price is unavailable. Load package details before submitting.';$('project-page-limit').textContent=value==='onpage'?'(up to 3)':'(up to 5)';$('project-pages').required=value!=='keywords';$('project-topic').required=['keywords','bundle'].includes(value);requestReadiness();}
  async function loadCatalog(){const version=++catalogReadVersion;currentCatalog=null;scope();try{const response=await fetch('/catalog',{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error();const data=await response.json();if(!window.ZikapRequestValidation.validCatalog(data.services))throw Error();if(version!==catalogReadVersion)return;currentCatalog=data.services;}catch{if(version!==catalogReadVersion)return;currentCatalog=null;}for(const id of Object.keys(names)){const item=currentCatalog?.find(s=>s.id===id);$('project-package').querySelector('option[value="'+id+'"]').textContent=item?item.title+' / $'+item.price+' USD':names[id]+' / Price unavailable';}scope();}
  const reloadCatalog=button('Reload current package details');reloadCatalog.addEventListener('click',loadCatalog);$('package-scope').after(reloadCatalog);loadCatalog();
- const intakeParams=new URLSearchParams(location.search),intakeWebsite=intakeParams.get('website');if(intakeWebsite&&intakeWebsite.length<=500){try{const url=new URL(intakeWebsite);if(['http:','https:'].includes(url.protocol)&&!url.username&&!url.password&&!url.search){$('project-website').value=url.href;const lines=(intakeParams.get('pages')||url.href).split('\n').slice(0,5);if(lines.every(line=>{const page=new URL(line);return page.origin===url.origin&&!page.username&&!page.password&&!page.search&&page.href.length<=500;}))$('project-pages').value=lines.join('\n');}}catch{}}
- const initialPackage=new URLSearchParams(location.search).get('package');if(Object.hasOwn(names,initialPackage))$('project-package').value=initialPackage;scope();$('project-package').addEventListener('change',scope);
+ $('intake-selection-notice').hidden=!intakeHandoff.hasSelection();scope();$('project-package').addEventListener('change',scope);
  ['login','register'].forEach(mode=>$('show-'+mode).addEventListener('click',()=>authMode(mode)));$('show-recover').addEventListener('click',()=>authMode('recover'));$('back-login').addEventListener('click',()=>authMode('login'));
  for(const mode of ['login','register','recover']){
   $(mode+'-form').addEventListener('submit',async event=>{
@@ -97,7 +100,7 @@
  $('toggle-recovery').addEventListener('click',()=>{const show=$('recovery-key').type==='password';$('recovery-key').type=show?'text':'password';$('toggle-recovery').textContent=show?'Hide recovery code':'Show recovery code';$('toggle-recovery').setAttribute('aria-pressed',String(show));});
  $('download-recovery').addEventListener('click',()=>{if(!recoveryCode)return;download('zikap-account-recovery.txt','Zikap account recovery\nEmail: '+user.email+'\nRecovery code: '+recoveryCode+'\nSign in: https://zikap.m-mirkhel20.workers.dev/account/\n\nKeep this file private. This code can replace your password. Only the latest code works.');$('recovery-message').textContent='Download requested. Check your browser downloads and keep the file private.';});
  $('recovery-saved').addEventListener('change',()=>{$('close-recovery').disabled=!$('recovery-saved').checked;});
- $('close-recovery').addEventListener('click',()=>{if(!$('recovery-saved').checked)return;recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;setView('overview');$('overview').focus();});
+ $('close-recovery').addEventListener('click',()=>{if(!$('recovery-saved').checked)return;recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;const destination=Object.hasOwn(views,location.hash.slice(1))?location.hash.slice(1):'overview';setView(destination);$(destination).focus();});
  function setAccountTab(value){
   if(!['profile','security','data'].includes(value))return;accountTab=value;
   for(const key of ['profile','security','data']){const selected=key===value;$(key==='profile'?'account-profile-panel':key==='security'?'account-security-panel':'account-data-panel').hidden=!selected;const tab=$('account-tab-'+key);tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;}
@@ -301,7 +304,7 @@
   catch(e){if(currentEpoch===epoch&&!sessionError(e))message.textContent=errorText(e);}finally{if(currentEpoch===epoch){input.value='';if(kind==='password')$('new-password').value='';submit.disabled=false;$('logout').disabled=false;}}
  });
  async function boot(){
-  try{const status=await api('/status');paymentTestMode=status.paymentTestMode;if(!status.ready){$('app-status').textContent='Customer accounts are being prepared. Please return shortly. The free tools remain available.';return;}try{await enter(await api('/session'));}catch(e){if(e.status===401){clearAccount('Sign in or create an account to manage your projects.');}else throw e;}}
+  try{const status=await api('/status');paymentTestMode=status.paymentTestMode;if(!status.ready){$('app-status').textContent='Customer accounts are being prepared. Please return shortly. The free tools remain available.';return;}try{await enter(await api('/session'));}catch(e){if(e.status===401){clearAccount('Sign in or create an account to manage your projects.',{preserveInitialSelection:true});}else throw e;}}
   catch(e){$('app-status').textContent=errorText(e)+' Please return shortly.';}
  }
  boot();
