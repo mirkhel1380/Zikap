@@ -21,6 +21,6 @@
    finally{if(version===epoch){input.value='';busy=false;controls();}}
   }
   input.addEventListener('input',controls);refresh.addEventListener('click',()=>run());form.addEventListener('submit',e=>{e.preventDefault();if(!submit.disabled)run(true);});controls();
-  return {clear(){epoch++;loaded=false;busy=false;others=false;input.value='';list.replaceChildren();status.textContent='';controls();},ensureLoaded(){if(!loaded)run();}};
+  return {refresh:()=>run(),clear(){epoch++;loaded=false;busy=false;others=false;input.value='';list.replaceChildren();status.textContent='';controls();},ensureLoaded(){if(!loaded)run();}};
  }};
 })();

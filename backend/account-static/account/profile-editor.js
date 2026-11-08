@@ -13,6 +13,6 @@
   form.addEventListener('submit',async event=>{event.preventDefault();if(busy||!loaded||!dirty()||!valid())return;const current=epoch,body={name:input.value.trim(),expectedName:baseName};busy=true;status.textContent='Saving your name…';controls();try{const data=await api('/profile','PATCH',body);if(current!==epoch)return;accept(data);status.textContent='Name saved to your account.';}catch(e){if(current===epoch&&!onError(e)){if(e.status===409)loaded=false;status.textContent=e.message||'The name could not be saved. Your draft is kept.';}}finally{if(current===epoch){busy=false;controls();}}});
   input.addEventListener('input',()=>{controls();status.textContent=dirty()?'Unsaved name. Choose Save name to update your account.':'';});refresh.addEventListener('click',load);
   addEventListener('beforeunload',event=>{if(dirty()||busy){event.preventDefault();event.returnValue='';}});controls();
-  return {ensureLoaded(){if(!loaded)return load();},hasDraft:()=>dirty(),clear(){epoch++;busy=false;loaded=false;baseName='';input.value='';status.textContent='';controls();}};
+  return {refresh:load,ensureLoaded(){if(!loaded)return load();},hasDraft:()=>dirty(),clear(){epoch++;busy=false;loaded=false;baseName='';input.value='';status.textContent='';controls();}};
  }};
 })();

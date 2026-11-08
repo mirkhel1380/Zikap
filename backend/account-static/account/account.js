@@ -4,7 +4,8 @@
  const names={audit:'Technical SEO Starter',keywords:'Keyword Research Starter',onpage:'On-page SEO Starter',bundle:'SEO Starter Bundle'};
  const scopes={audit:'One website, up to 5 public URLs. A prioritized technical findings report and action checklist.',keywords:'25 curated keyword ideas for one topic, language and market; mapped to up to 5 pages. No live volume or difficulty data.',onpage:'Proposed metadata, content and internal-link improvements for up to 3 existing pages. No publishing or full article writing.',bundle:'Technical review of up to 5 URLs, 25 keyword ideas with a page map, and on-page briefs for up to 3 pages on the same website.'};
  const states={requested:'Request received',accepted:'Accepted',in_progress:'In progress',delivered:'Report delivered',revision_requested:'Revision requested',declined:'Declined'};
- let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='',paymentTestMode=null,detailVersion=0,requestSubmitting=false,receiptReadVersion=0,authBusy=false,authRequestVersion=0,projectsReadState='loading',projectsHaveSnapshot=false,accountTab='profile';
+ let user=null,epoch=0,listVersion=0,cursor=null,pending=null,recoveryCode='',paymentTestMode=null,detailVersion=0,requestSubmitting=false,receiptReadVersion=0,authBusy=false,authRequestVersion=0,projectsReadState='loading',projectsHaveSnapshot=false,accountTab='profile',activeView='overview';
+ const headerRefreshBusy=new Set();
  const projects=new Map(),requestBaseline={packageId:'audit',language:'English'};let currentCatalog=null,catalogReadVersion=0;
  const makeUUID=()=>{if(typeof crypto.randomUUID==='function')return crypto.randomUUID();const bytes=crypto.getRandomValues(new Uint8Array(16));bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;const hex=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);};
  const node=(tag,value,cls)=>{const n=document.createElement(tag);n.textContent=value;if(cls)n.className=cls;return n;};
@@ -42,7 +43,7 @@
   $('show-login').setAttribute('aria-pressed',String(mode==='login'));$('show-register').setAttribute('aria-pressed',String(mode==='register'));
  }
  function clearAccount(message){
-  authRequestVersion++;authLock(false);recoveryFile.clear();profileEditor.clear();$('profile-created-at').textContent='—';nextSteps.clear();projectsReadState='loading';projectsHaveSnapshot=false;
+  authRequestVersion++;headerRefreshBusy.clear();activeView='overview';authLock(false);recoveryFile.clear();profileEditor.clear();$('profile-created-at').textContent='—';nextSteps.clear();projectsReadState='loading';projectsHaveSnapshot=false;
   support.clear();billing.clear();accountSessions.clear();$('logout').disabled=false;for(const kind of ['password','recovery']){$(kind+'-form').querySelector('button[type=submit]').disabled=false;$(kind==='password'?'password-message':'code-message').textContent='';}closeReport();$('getting-started').hidden=true;document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
   document.body.classList.remove('signed-in','sidebar-open');document.dispatchEvent(new Event('zikap-session-cleared'));user=null;epoch++;receiptReadVersion++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
   for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('profile-full-name').textContent='—';$('profile-email').textContent='—';$('profile-monogram').textContent='Z';setAccountTab('profile');$('greeting').textContent='Welcome back.';$('nav-unread-badge').hidden=true;$('unread-count').textContent='0';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
@@ -100,7 +101,7 @@
  function setAccountTab(value){
   if(!['profile','security','data'].includes(value))return;accountTab=value;
   for(const key of ['profile','security','data']){const selected=key===value;$(key==='profile'?'account-profile-panel':key==='security'?'account-security-panel':'account-data-panel').hidden=!selected;const tab=$('account-tab-'+key);tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;}
-  if(value==='security'&&user)accountSessions.ensureLoaded();if(value==='profile'&&user&&!$('my-account').hidden)profileEditor.ensureLoaded();
+  if(value==='security'&&user)accountSessions.ensureLoaded();if(value==='profile'&&user&&!$('my-account').hidden)profileEditor.ensureLoaded();updateWorkspaceRefresh();
  }
  document.querySelectorAll('[data-account-tab]').forEach(tab=>{tab.addEventListener('click',()=>setAccountTab(tab.dataset.accountTab));tab.addEventListener('keydown',event=>{const keys=['profile','security','data'],index=keys.indexOf(tab.dataset.accountTab);let next;if(event.key==='ArrowRight')next=(index+1)%3;else if(event.key==='ArrowLeft')next=(index+2)%3;else if(event.key==='Home')next=0;else if(event.key==='End')next=2;else return;event.preventDefault();setAccountTab(keys[next]);$('account-tab-'+keys[next]).focus();});});
  document.querySelectorAll('[data-account-open],[data-account-target]').forEach(control=>control.addEventListener('click',()=>{if(control.dataset.accountOpen)setAccountTab(control.dataset.accountOpen);const target=$(control.dataset.accountTarget);if(target){target.tabIndex=target.matches('input,button')?target.tabIndex:-1;reveal(target);}else $('account-tab-'+control.dataset.accountOpen).focus();}));
@@ -108,10 +109,10 @@
  const views={payments:'Payments',support:'Help & support','ai-review':'AI website review',performance:'Search performance',overview:'Overview',projects:'My projects',reports:'Report library','new-project':'New request','free-tools':'SEO tools','link-project':'Link a receipt','my-account':'My account'};
  function setView(preferred){
   if(!user)return;const key=preferred||location.hash.slice(1),view=key==='account-security'?'my-account':Object.hasOwn(views,key)?key:'overview';if(key==='account-security'){setAccountTab('security');history.replaceState(null,'','#my-account');}
-  document.querySelectorAll('.workspace-view').forEach(section=>{section.hidden=section.id!==view;});
+  activeView=view;document.querySelectorAll('.workspace-view').forEach(section=>{section.hidden=section.id!==view;});
   document.querySelectorAll('[data-view]').forEach(link=>{if(link.dataset.view===view)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
   if(view==='support')support.ensureLoaded();if(view==='payments')billing.ensureLoaded();if(view==='my-account'&&accountTab==='security')accountSessions.ensureLoaded();if(view==='my-account'&&accountTab==='profile')profileEditor.ensureLoaded();
-  if(preferred)history.replaceState(null,'','#'+view);$('view-title').textContent=views[view];document.title=views[view]+' | Zikap';document.body.classList.remove('sidebar-open');$('workspace-menu').setAttribute('aria-expanded','false');
+  if(preferred)history.replaceState(null,'','#'+view);$('view-title').textContent=views[view];document.title=views[view]+' | Zikap';document.body.classList.remove('sidebar-open');$('workspace-menu').setAttribute('aria-expanded','false');updateWorkspaceRefresh();
  }
  addEventListener('hashchange',()=>{setView();if(user){const key=location.hash.slice(1);if(Object.hasOwn(views,key))$(key).focus({preventScroll:true});}});
  document.querySelectorAll('[data-view]').forEach(link=>link.addEventListener('click',()=>{if(link.dataset.view==='my-account')setAccountTab('profile');if(location.hash===link.getAttribute('href'))setView(link.dataset.view);}));
@@ -182,12 +183,24 @@
   renderOverview();$('project-count').textContent=String(projects.size);$('active-count').textContent=String(active);$('report-count').textContent=String(delivered);$('more-projects').hidden=!cursor;
  }
  async function loadProjects(more=false){
-  if(!user)return;const version=++listVersion,currentEpoch=epoch;$('projects-message').textContent='Loading your projects…';$('refresh-projects').disabled=true;$('more-projects').disabled=true;$('more-reports').disabled=true;$('workspace-refresh').disabled=true;$('workspace-sync').textContent='Updating projects…';projectsReadState='loading';renderNextSteps();
-  try{const data=await api('/orders'+(more&&cursor?'?before='+encodeURIComponent(cursor):''));if(currentEpoch!==epoch||version!==listVersion)return;if(!more)projects.clear();for(const order of data.orders)projects.set(order.id,order);cursor=data.next;projectsHaveSnapshot=true;projectsReadState='ready';renderProjects();$('workspace-sync').textContent='Projects up to date';$('projects-message').textContent='Your project list is up to date.';}
-  catch(e){if(currentEpoch===epoch&&version===listVersion&&!sessionError(e)){projectsReadState='error';renderNextSteps();$('projects-message').textContent=errorText(e);$('workspace-sync').textContent='Could not refresh projects. Try Refresh.';}}
-  finally{if(currentEpoch===epoch&&version===listVersion){$('refresh-projects').disabled=false;$('more-projects').disabled=false;$('more-reports').disabled=false;$('workspace-refresh').disabled=false;}}
+  if(!user)return;const version=++listVersion,currentEpoch=epoch;$('projects-message').textContent='Loading your projects…';$('refresh-projects').disabled=true;$('more-projects').disabled=true;$('more-reports').disabled=true;projectsReadState='loading';updateWorkspaceRefresh();renderNextSteps();
+  try{const data=await api('/orders'+(more&&cursor?'?before='+encodeURIComponent(cursor):''));if(currentEpoch!==epoch||version!==listVersion)return;if(!more)projects.clear();for(const order of data.orders)projects.set(order.id,order);cursor=data.next;projectsHaveSnapshot=true;projectsReadState='ready';renderProjects();updateWorkspaceRefresh();$('projects-message').textContent='Your project list is up to date.';}
+  catch(e){if(currentEpoch===epoch&&version===listVersion&&!sessionError(e)){projectsReadState='error';renderNextSteps();$('projects-message').textContent=errorText(e);updateWorkspaceRefresh();}}
+  finally{if(currentEpoch===epoch&&version===listVersion){$('refresh-projects').disabled=false;$('more-projects').disabled=false;$('more-reports').disabled=false;updateWorkspaceRefresh();}}
  }
- $('workspace-refresh').addEventListener('click',()=>loadProjects());
+ function refreshContext(){
+  if(activeView==='my-account'){
+   if(accountTab==='profile')return {key:'profile',label:'Saved profile details',run:()=>profileEditor.refresh()};
+   if(accountTab==='security')return {key:'sessions',label:'Session dates',run:()=>accountSessions.refresh()};
+   return null;
+  }
+  if(activeView==='payments')return {key:'payments',label:'Saved payment records',run:()=>billing.refresh()};
+  if(activeView==='support')return {key:'support',label:'Support request list',run:()=>support.load()};
+  if(['overview','projects','reports'].includes(activeView))return {key:'projects',label:'Projects',run:()=>loadProjects()};
+  return null;
+ }
+ function updateWorkspaceRefresh(){const context=refreshContext(),refresh=$('workspace-refresh'),status=$('workspace-sync');refresh.hidden=status.hidden=!context;if(!context){refresh.removeAttribute('aria-label');return;}const busy=headerRefreshBusy.has(context.key);refresh.setAttribute('aria-label','Refresh '+context.label.toLowerCase());refresh.title='Refresh '+context.label.toLowerCase();refresh.disabled=busy||(context.key==='projects'&&projectsReadState==='loading');status.textContent=busy?'Refreshing '+context.label.toLowerCase()+'…':context.key==='projects'?(projectsReadState==='loading'?'Updating projects…':projectsReadState==='error'?'Could not refresh projects. Try Refresh.':'Projects up to date'):context.label;}
+ $('workspace-refresh').addEventListener('click',async()=>{const context=refreshContext();if(!user||!context||headerRefreshBusy.has(context.key))return;const current=epoch;headerRefreshBusy.add(context.key);updateWorkspaceRefresh();try{await context.run();}finally{if(current===epoch){headerRefreshBusy.delete(context.key);updateWorkspaceRefresh();}}});
  for(const layout of ['list','board'])$('project-'+layout+'-view').addEventListener('click',()=>{projectLayout=layout;for(const item of ['list','board'])$('project-'+item+'-view').setAttribute('aria-pressed',String(item===layout));renderProjects();});
  $('project-search').addEventListener('input',renderProjects);$('project-filter').addEventListener('change',renderProjects);$('clear-project-filters').addEventListener('click',()=>{$('project-search').value='';$('project-filter').value='all';renderProjects();$('project-search').focus();});
  $('refresh-projects').addEventListener('click',()=>loadProjects());$('more-projects').addEventListener('click',()=>loadProjects(true));

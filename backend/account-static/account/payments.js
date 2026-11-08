@@ -34,6 +34,6 @@
   }
   function clear(){epoch++;busy=false;loaded=false;cursor=null;refreshedAt='';records.clear();search.value='';mode.value='all';refresh.disabled=false;more.disabled=false;message.textContent='';render();}
   search.addEventListener('input',render);mode.addEventListener('change',render);refresh.addEventListener('click',()=>load());more.addEventListener('click',()=>load(true));clear();
-  return{clear,ensureLoaded:()=>{if(!loaded)return load();}};
+  return{clear,refresh:()=>load(),ensureLoaded:()=>{if(!loaded)return load();}};
  }};
 })();

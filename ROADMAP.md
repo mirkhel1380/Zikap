@@ -150,3 +150,7 @@ My account/Your data privacy links and Payments payment/refund help now open the
 ## Prepared export lifecycle — November 8, 2026
 
 Your data now shows actual prepared-file size, a Clear prepared file control and a ten-minute local link lifetime with click-time expiry checks. Session/page cleanup and run-scoped timeout guards prevent stale links or cancelled work from restoring a file. Four new controller tests and an isolated native JSON download/clear/mobile check passed. Saved device files and backend records are unchanged. Ready-file screenshots use labeled synthetic fixtures; production verification remains read-only. See backend/EXPORT_LIFECYCLE_QA.md.
+
+## Section-specific workspace refresh — November 8, 2026
+
+Header Refresh now reads the active profile, session dates, payment records, support list or project list, with a matching accessible label and contextual header text. It is hidden where explicit form/local/AI/export controls apply. In-flight/epoch guards and current-view rendering prevent late project responses from overwriting another view's header. Syntax and isolated endpoint-counter, draft-preservation, hidden-control, late-response and mobile checks passed with zero writes. See backend/CONTEXT_REFRESH_QA.md.
