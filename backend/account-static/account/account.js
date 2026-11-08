@@ -18,6 +18,7 @@
  }
  const support=window.ZikapSupport.mount($('customer-support'),{role:'customer',api:(suffix,method,body)=>api('/support'+suffix,method,body),onError:sessionError});
  const billing=window.ZikapPayments.mount($('customer-payments'),{api,openProject,onError:sessionError});
+ const accountSessions=window.ZikapSessions.mount($('account-sessions-panel'),{api,onError:sessionError});
  function errorText(e){return e.name==='TimeoutError'?'The request timed out. Please try again.':e.message||'Could not connect. Please try again.';}
  function hasRequestDraft(){return !!user&&(['website','pages','topic','market','goals'].some(key=>$('project-'+key).value.trim())||$('project-package').value!==requestBaseline.packageId||$('project-language').value!==requestBaseline.language||$('project-consent').checked);}
  function updateRequestDraft(){
@@ -35,7 +36,7 @@
   $('show-login').setAttribute('aria-pressed',String(mode==='login'));$('show-register').setAttribute('aria-pressed',String(mode==='register'));
  }
  function clearAccount(message){
-  support.clear();billing.clear();closeReport();$('getting-started').hidden=true;document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
+  support.clear();billing.clear();accountSessions.clear();$('logout').disabled=false;for(const kind of ['password','recovery']){$(kind+'-form').querySelector('button[type=submit]').disabled=false;$(kind==='password'?'password-message':'code-message').textContent='';}closeReport();$('getting-started').hidden=true;document.title='My account | Zikap';$('report-search').value='';$('report-package').value='all';$('report-sort').value='updated';$('report-results').textContent='';
   document.body.classList.remove('signed-in','sidebar-open');document.dispatchEvent(new Event('zikap-session-cleared'));user=null;epoch++;receiptReadVersion++;listVersion++;detailVersion++;pending=null;cursor=null;projects.clear();recoveryCode='';$('recovery-key').value='';$('recovery-box').hidden=true;$('dashboard').hidden=true;$('logout').hidden=true;$('auth').hidden=false;
   for(const id of ['recent-projects','recent-updates','report-library','status-breakdown'])$(id).replaceChildren();$('account-name').textContent='My account';$('account-avatar').textContent='Z';$('greeting').textContent='Welcome back.';$('profile-line').textContent='';$('nav-unread-badge').hidden=true;$('unread-count').textContent='0';$('project-search').value='';$('project-filter').value='all';$('project-results').textContent='';$('project-list').replaceChildren();$('project-detail').replaceChildren();$('project-detail').hidden=true;
   requestBusy(false);resetRequestForm();$('project-message').textContent='';$('link-form').reset();$('link-message').textContent='';
@@ -47,7 +48,7 @@
   recoveryCode=code;$('recovery-key').value=code;$('recovery-key').type='password';$('toggle-recovery').textContent='Show recovery code';$('toggle-recovery').setAttribute('aria-pressed','false');$('recovery-saved').checked=false;$('close-recovery').disabled=true;$('recovery-message').textContent='';$('recovery-box').hidden=false;reveal($('recovery-box'));
  }
  async function enter(data){
-  document.body.classList.add('signed-in');user=data.user;epoch++;pending=null;billing.clear();$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
+  document.body.classList.add('signed-in');user=data.user;epoch++;pending=null;billing.clear();accountSessions.clear();$('auth').hidden=true;$('dashboard').hidden=false;$('logout').hidden=false;$('app-status').textContent='Signed in. Your projects are available below.';
   $('account-name').textContent=user.name;$('account-avatar').textContent=user.name.trim().slice(0,1).toUpperCase();$('greeting').textContent='Welcome back, '+user.name.split(/\s+/)[0]+'.';setView();updateRequestDraft();document.dispatchEvent(new Event('zikap-session-ready'));$('profile-line').textContent=user.name+' · '+user.email;
   if(data.recoveryKey)showRecovery(data.recoveryKey);await loadProjects();
   const params=new URLSearchParams(location.search),id=params.get('order');
@@ -87,7 +88,7 @@
   if(!user)return;const key=preferred||location.hash.slice(1),view=Object.hasOwn(views,key)?key:'overview';
   document.querySelectorAll('.workspace-view').forEach(section=>{section.hidden=section.id!==view;});
   document.querySelectorAll('[data-view]').forEach(link=>{if(link.dataset.view===view)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
-  if(view==='support')support.ensureLoaded();if(view==='payments')billing.ensureLoaded();
+  if(view==='support')support.ensureLoaded();if(view==='payments')billing.ensureLoaded();if(view==='account-security')accountSessions.ensureLoaded();
   if(preferred)history.replaceState(null,'','#'+view);$('view-title').textContent=views[view];document.title=views[view]+' | Zikap';document.body.classList.remove('sidebar-open');$('workspace-menu').setAttribute('aria-expanded','false');
  }
  addEventListener('hashchange',()=>{setView();if(user){const key=location.hash.slice(1);if(Object.hasOwn(views,key))$(key).focus({preventScroll:true});}});
@@ -258,9 +259,9 @@
  $('receipt-file').addEventListener('change',async event=>{const currentEpoch=epoch,version=++receiptReadVersion,file=event.target.files[0];if(!user||!file)return;const alive=()=>currentEpoch===epoch&&version===receiptReadVersion&&!!user;try{if(file.size>12000)throw new Error('Choose a Zikap receipt text file smaller than 12 KB.');const content=await file.text();if(!alive())return;const id=content.match(/^Order ID: ([a-f0-9-]{36})\r?$/m)?.[1],key=content.match(/^Private receipt key: ([a-f0-9-]{72})\r?$/m)?.[1];if(!id||!key)throw new Error('The file needs an Order ID and private receipt key.');$('link-id').value=id;$('link-key').value=key;$('link-message').textContent='Receipt opened. Choose Link project to connect it to this account.';}catch(e){if(alive())$('link-message').textContent=errorText(e);}finally{if(version===receiptReadVersion)event.target.value='';}});
  $('link-form').addEventListener('submit',async event=>{event.preventDefault();const submit=event.currentTarget.querySelector('button[type=submit]'),currentEpoch=epoch;submit.disabled=true;$('link-message').textContent='Checking your original receipt…';try{const data=await api('/orders/attach','POST',{orderId:$('link-id').value.trim(),receiptKey:$('link-key').value.trim()});if(currentEpoch!==epoch)return;$('link-key').value='';$('link-id').value='';$('link-message').textContent='Project linked. It is now available in My projects.';await loadProjects();if(currentEpoch===epoch)detail(data.order);}catch(e){if(currentEpoch===epoch&&!sessionError(e))$('link-message').textContent=errorText(e);}finally{submit.disabled=false;}});
  for(const kind of ['password','recovery'])$(kind+'-form').addEventListener('submit',async event=>{
-  event.preventDefault();const submit=event.currentTarget.querySelector('button[type=submit]'),message=$(kind==='password'?'password-message':'code-message'),input=$(kind==='password'?'current-password':'recovery-password');submit.disabled=true;$('logout').disabled=true;message.textContent='Updating account security…';
-  try{const data=await api(kind==='password'?'/password':'/recovery-code','POST',{currentPassword:input.value,...(kind==='password'?{newPassword:$('new-password').value}:{})});message.textContent=kind==='password'?'Password updated. Save your replacement recovery code.':'Your previous recovery code has been replaced.';showRecovery(data.recoveryKey);}
-  catch(e){message.textContent=errorText(e);}finally{input.value='';if(kind==='password')$('new-password').value='';submit.disabled=false;$('logout').disabled=false;}
+  event.preventDefault();const currentEpoch=epoch,submit=event.currentTarget.querySelector('button[type=submit]'),message=$(kind==='password'?'password-message':'code-message'),input=$(kind==='password'?'current-password':'recovery-password');submit.disabled=true;$('logout').disabled=true;message.textContent='Updating account security…';
+  try{const data=await api(kind==='password'?'/password':'/recovery-code','POST',{currentPassword:input.value,...(kind==='password'?{newPassword:$('new-password').value}:{})});if(currentEpoch!==epoch)return;if(kind==='password'){accountSessions.clear();accountSessions.ensureLoaded();}message.textContent=kind==='password'?'Password updated. Save your replacement recovery code.':'Your previous recovery code has been replaced.';showRecovery(data.recoveryKey);}
+  catch(e){if(currentEpoch===epoch&&!sessionError(e))message.textContent=errorText(e);}finally{if(currentEpoch===epoch){input.value='';if(kind==='password')$('new-password').value='';submit.disabled=false;$('logout').disabled=false;}}
  });
  async function boot(){
   try{const status=await api('/status');paymentTestMode=status.paymentTestMode;if(!status.ready){$('app-status').textContent='Customer accounts are being prepared. Please return shortly. The free tools remain available.';return;}try{await enter(await api('/session'));}catch(e){if(e.status===401){clearAccount('Sign in or create an account to manage your projects.');}else throw e;}}

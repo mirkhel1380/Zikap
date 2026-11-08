@@ -37,3 +37,5 @@ body.signed-in{background:#f5f7f4;color:#193a30;font-size:14px;line-height:1.65}
 .request-draft-panel{padding:16px;margin:20px 0;border:1px solid #dce5f3;border-radius:12px;background:#f4f8ff}
 .request-draft-panel p{font-size:12px;line-height:1.7;color:#526784;margin:0 0 12px}
 .request-draft-panel .btn{font-size:12px;min-height:40px}
+
+.session-panel{margin:24px 0}.session-list{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:12px}.session-entry{border:1px solid #dbe4f1;border-radius:12px;padding:16px;overflow-wrap:anywhere}.session-entry strong{display:block;color:#143d83;margin-bottom:8px}.session-entry div{font-size:.85rem;margin-top:6px}.session-panel form{max-width:560px;border-top:1px solid #dbe4f1;padding-top:16px;margin-top:20px}

@@ -80,3 +80,28 @@ test('account login throttling and session expiry are enforced by the server',as
  for(let i=0;i<10;i++)assert.equal((await call(env,'/account-api/login','POST',{email:'unknown@example.com',password})).status,401);
  assert.equal((await call(env,'/account-api/login','POST',{email:'unknown@example.com',password})).status,429);db.close();
 });
+
+test('customers can inspect session dates and revoke only their other sessions after password confirmation',async()=>{
+ const{env,db}=setupAccounts();try{
+  const a=await register(env),otherA=await call(env,'/account-api/login','POST',{email:'one@example.com',password}),b=await register(env,'two@example.com');
+  const list=await call(env,'/account-api/sessions','GET',null,a.cookie);assert.equal(list.status,200);assert.equal(list.body.sessions.length,2);assert.equal(list.body.sessions.filter(s=>s.current).length,1);
+  for(const row of list.body.sessions)assert.deepEqual(Object.keys(row).sort(),['createdAt','current','expiresAt']);
+  assert.equal(JSON.stringify(list.body).includes('token_hash'),false);assert.equal(JSON.stringify(list.body).includes(a.cookie.split('=')[1]),false);
+  assert.equal((await call(env,'/account-api/sessions')).status,401);assert.equal((await call(env,'/account-api/sessions','POST',{},a.cookie)).status,405);
+  assert.equal((await call(env,'/account-api/sessions/revoke-others','GET',null,a.cookie)).status,405);
+  assert.equal((await call(env,'/account-api/sessions/revoke-others','POST',{currentPassword:password},a.cookie,'https://evil.example')).status,403);
+  assert.equal((await call(env,'/account-api/sessions/revoke-others','POST',{currentPassword:'Wrong-fixture-password-2026'},a.cookie)).status,403);
+  assert.equal((await call(env,'/account-api/session','GET',null,otherA.cookie)).status,200);
+  const revoked=await call(env,'/account-api/sessions/revoke-others','POST',{currentPassword:password},a.cookie);assert.equal(revoked.status,200);assert.equal(revoked.body.signedOutOtherSessions,true);assert.equal(revoked.body.sessions.length,1);assert.equal(revoked.body.sessions[0].current,true);
+  assert.equal((await call(env,'/account-api/session','GET',null,a.cookie)).status,200);assert.equal((await call(env,'/account-api/session','GET',null,otherA.cookie)).status,401);assert.equal((await call(env,'/account-api/session','GET',null,b.cookie)).status,200);
+  const repeated=await call(env,'/account-api/sessions/revoke-others','POST',{currentPassword:password},a.cookie);assert.equal(repeated.status,200);assert.equal(repeated.body.sessions.length,1);
+ }finally{db.close();}
+});
+test('a session revoked during password verification cannot sign out a newer session',async()=>{
+ const{env,db}=setupAccounts();try{
+  const a=await register(env),newer=await call(env,'/account-api/login','POST',{email:'one@example.com',password});
+  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(a.cookie.split('=')[1])),hash=[...new Uint8Array(bytes)].map(v=>v.toString(16).padStart(2,'0')).join('');
+  const prepare=env.DB.prepare.bind(env.DB);env.DB.prepare=sql=>{const statement=prepare(sql);if(sql.startsWith('DELETE FROM customer_sessions WHERE user_id=? AND token_hash<>? AND EXISTS')){const run=statement.run.bind(statement);statement.run=async()=>{db.prepare('DELETE FROM customer_sessions WHERE token_hash=?').run(hash);return run();};}return statement;};
+  const result=await call(env,'/account-api/sessions/revoke-others','POST',{currentPassword:password},a.cookie);assert.equal(result.status,401);assert.equal((await call(env,'/account-api/session','GET',null,newer.cookie)).status,200);
+ }finally{db.close();}
+});

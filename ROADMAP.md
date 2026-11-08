@@ -4,6 +4,8 @@ Reviewed November 7, 2026 against repository main. English UI, original logo, Gi
 
 ## Completed and verified
 
+- Customer Account & security now shows real session creation/expiry dates and the current session, with password-confirmed sign-out of other sessions. Auth/origin/race isolation and delayed-response cleanup passed; all 164 tests passed on November 8. No device metadata was added. See backend/ACCOUNT_SESSIONS_QA.md.
+
 - Customer and owner dashboards share the navy/blue workspace design. Real project lists have List/Board layouts, private report delivery, messages, action plans and version-protected owner editing/history.
 - Public inner pages match the home-page design. The home header and mobile menu expose the customer AI website review workspace.
 - Source-HTML checks sample up to three permitted public pages, show evidence/limitations and recommend optional manual services only when findings support them.

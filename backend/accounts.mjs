@@ -82,6 +82,26 @@ export async function accountRoute(req,env,h){
   return result({user:publicUser(user),recoveryKey:newCode},200,await startSession(user));
  }
  const user=await session();
+ async function sessionList(){
+  const now=Math.floor(Date.now()/1000),{results}=await env.DB.prepare('SELECT created_at createdAt,expires_at expiresAt,token_hash=? current FROM customer_sessions WHERE user_id=? AND expires_at>? ORDER BY current DESC,created_at DESC,rowid DESC LIMIT 5').bind(user.token_hash,user.id,now).all();
+  return {sessions:results.map(row=>({createdAt:row.createdAt,expiresAt:row.expiresAt,current:!!row.current})),limit:5,asOf:now};
+ }
+ if(path==='/account-api/sessions'){
+  if(req.method!=='GET')throw new ApiError('Method not allowed.',405);
+  await rate(req,env,'account-read',240);return result(await sessionList());
+ }
+ if(path==='/account-api/sessions/revoke-others'){
+  if(req.method!=='POST')throw new ApiError('Method not allowed.',405);
+  await rate(req,env,'account-session-revoke',5);const data=await jsonBody(req,1000),current=passwordOf(data.currentPassword);
+  const full=await env.DB.prepare('SELECT password_hash,password_salt FROM customer_users WHERE id=?').bind(user.id).first();
+  if(!full||!equal(await passwordHash(current,full.password_salt),full.password_hash))throw new ApiError('Your current password is incorrect.',403);
+  const now=Math.floor(Date.now()/1000);
+  // A revoked session or a concurrent password change cannot revoke newer sign-ins.
+  await env.DB.prepare('DELETE FROM customer_sessions WHERE user_id=? AND token_hash<>? AND EXISTS(SELECT 1 FROM customer_sessions s JOIN customer_users u ON u.id=s.user_id WHERE s.user_id=? AND s.token_hash=? AND s.expires_at>? AND u.password_hash=? AND u.password_salt=?)').bind(user.id,user.token_hash,user.id,user.token_hash,now,full.password_hash,full.password_salt).run();
+  const active=await env.DB.prepare('SELECT s.user_id FROM customer_sessions s JOIN customer_users u ON u.id=s.user_id WHERE s.user_id=? AND s.token_hash=? AND s.expires_at>? AND u.password_hash=? AND u.password_salt=?').bind(user.id,user.token_hash,Math.floor(Date.now()/1000),full.password_hash,full.password_salt).first();
+  if(!active)throw new ApiError('Your session changed. Sign in again to review account security.',401);
+  return result({signedOutOtherSessions:true,...await sessionList()});
+ }
  if(path==='/account-api/payments'){await rate(req,env,'account-read',240);return result(await customerPayments(req,env,user,ApiError));}
  if(path==='/account-api/support'||path.startsWith('/account-api/support/'))return result(await supportRoute(req,env,user,'customer',h));
  if(path.startsWith('/account-api/data-export'))return result(await customerExport(req,env,user,h,async value=>{const current=passwordOf(value),full=await env.DB.prepare('SELECT password_hash,password_salt FROM customer_users WHERE id=?').bind(user.id).first();if(!full||!equal(await passwordHash(current,full.password_salt),full.password_hash))throw new ApiError('Your current password is incorrect.',403);}));
