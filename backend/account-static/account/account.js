@@ -265,7 +265,7 @@
    }catch(e){if(alive()&&!sessionError(e))activityMessage.textContent=errorText(e);}
    finally{if(alive()){activityBusy=false;activityRefresh.disabled=false;}}
   });
-  const payment=order.payment||{available:false,status:'unpaid'},paymentBox=node('section','','payment-panel');paymentBox.append(node('h3','Payment'));
+  const payment=order.payment||{available:false,status:'unpaid'},paymentBox=node('section','','payment-panel');paymentBox.append(node('h3','Payment'));const policyNote=node('p','','tiny');policyNote.append('Review the service scope and ',Object.assign(document.createElement('a'),{href:'https://mirkhel1380.github.io/Zikap/refunds.html',target:'_blank',rel:'noopener',textContent:'cancellation and refund policy'}),' before paying. Zikap is operated by Highlink LLC.');paymentBox.append(policyNote);
   const paidLabels={paid:'Payment confirmed',partially_refunded:'Partially refunded',refunded:'Refunded'};
   if(paidLabels[payment.status])paymentBox.append(node('p',paidLabels[payment.status]+(payment.testMode?' (Stripe test mode; no real charge)':'')));
   else if(!payment.available)paymentBox.append(node('p','Online checkout is not enabled yet. Sending a project request does not charge you.'));

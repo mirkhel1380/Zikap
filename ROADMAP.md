@@ -174,3 +174,7 @@ Checkout preparation, payment-status checks, revisions and project reads now res
 ## Unsent clarification drafts — November 8, 2026
 
 Formal revision drafts now survive in-tab project refresh/close/reopen and workspace navigation, separately for each project. Successful matching submissions clear only the submitted draft; newer different notes remain explicitly unsent, even after the included revision is used. Explicit clearing, logout/unload warnings and account cleanup respect this memory-only lifecycle. Fifteen focused tests and isolated desktop/delayed-response/mobile checks passed without real revision/payment writes. See backend/REVISION_DRAFT_QA.md.
+
+## Customer policies — November 9, 2026
+
+The owner explicitly approved official publication after reviewing the consolidated draft PR. Final pages are terms.html, privacy.html, refunds.html and policies.html, version 2026-11-09, effective November 9, 2026. Site/footer/account links are included. Earlier owner-review pages remain archives. Existing project agreements are preserved; domain/mailbox setup and delivery verification remain deferred. No versioned acceptance receipt, Stripe Dashboard setting, authentication or database-schema change is claimed. See backend/POLICY_OPERATIONS.md and backend/POLICY_PUBLICATION_QA.md.
