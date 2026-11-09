@@ -91,7 +91,8 @@ test('complete order journey uses the independent owner portal, payment reconcil
   assert.equal((await customerCall('/account-api/orders', 'POST', brief, customer)).status, 201);
   assert.equal(f.db.prepare('SELECT count(*) n FROM orders').get().n, 1);
   assert.equal((await customerCall(cp, 'GET', undefined, customer)).body.order.status, 'requested');
-  assert.equal((await customerCall(cp + '/checkout', 'POST', { acknowledged: true }, customer)).status, 409);
+  assert.equal((await customerCall(cp, 'GET', undefined, customer)).body.order.checkoutEligible, true);
+  assert.equal((await customerCall(cp + '/checkout', 'POST', { acknowledged: true }, customer)).status, 200);
   assert.equal((await ownerCall('/admin/orders', 'GET', undefined, owner)).body.orders[0].id, id);
   assert.equal((await ownerCall(op, 'GET', undefined, customer)).status, 401);
   const original = (await ownerCall(op, 'GET', undefined, owner)).body.order;

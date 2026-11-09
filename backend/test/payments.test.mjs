@@ -24,10 +24,10 @@ function setup(live=false){
  env.STRIPE_HTTP=transport;return{db,env,sessions,calls,transport};
 }
 async function call(env,path,method='GET',body,cookie,owner=false){const headers={Origin:owner?site:host};if(body)headers['Content-Type']='application/json';if(cookie)headers.Cookie=cookie;if(owner)headers.Authorization='Bearer '+env.ADMIN_TOKEN;const r=await worker.fetch(new Request(host+path,{method,headers,body:body?JSON.stringify(body):undefined}),env);return{status:r.status,body:await r.json(),cookie:r.headers.get('set-cookie')?.split(';')[0]};}
-async function create(env,email='fixture@example.com',quote={}){
+async function create(env,email='fixture@example.com',quote={},accept=true){
  const a=await call(env,'/account-api/register','POST',{name:'Fixture',email,password,consent:true}),id=crypto.randomUUID();assert.equal(a.status,201);
  assert.equal((await call(env,'/account-api/orders','POST',{...project,...quote,requestId:id},a.cookie)).status,201);
- assert.equal((await call(env,'/admin/orders/'+id,'PATCH',{status:'accepted',report:'',note:'Scope and timing confirmed.'},null,true)).status,200);return{id,cookie:a.cookie};
+ if(accept)assert.equal((await call(env,'/admin/orders/'+id,'PATCH',{status:'accepted',report:'',note:'Scope and timing confirmed.'},null,true)).status,200);return{id,cookie:a.cookie};
 }
 const checkout=(env,a,extra={})=>call(env,'/account-api/orders/'+a.id+'/checkout','POST',{acknowledged:true,...extra},a.cookie);
 test('new catalog prices and titles are snapshotted; later edits never reprice existing Stripe checkout',async()=>{
@@ -47,10 +47,10 @@ async function webhook(env,type,object,id='evt_fixture_'+crypto.randomUUID().rep
  const signature=[...new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(timestamp+'.'+payload)))].map(v=>v.toString(16).padStart(2,'0')).join('');
  const r=await worker.fetch(new Request(host+'/stripe/webhook',{method:'POST',headers:{'Stripe-Signature':'t='+timestamp+',v1='+(changes.badSignature?'0'.repeat(64):signature)},body:changes.tampered?payload+' ':payload}),env);return{status:r.status,body:await r.json()};
 }
-test('checkout requires ownership, acceptance, acknowledgement and configured Stripe secrets',async()=>{
+test('checkout requires ownership, an eligible project status, acknowledgement and configured Stripe secrets',async()=>{
  const{db,env}=setup(),a=await create(env);assert.equal((await checkout(env,a,{acknowledged:false})).status,400);
  const b=await call(env,'/account-api/register','POST',{name:'Other',email:'other@example.com',password,consent:true});assert.equal((await call(env,'/account-api/orders/'+a.id+'/checkout','POST',{acknowledged:true},b.cookie)).status,404);
- db.prepare("UPDATE orders SET status='requested' WHERE id=?").run(a.id);assert.equal((await checkout(env,a)).status,409);db.prepare("UPDATE orders SET status='accepted' WHERE id=?").run(a.id);
+ db.prepare("UPDATE orders SET status='declined' WHERE id=?").run(a.id);assert.equal((await checkout(env,a)).status,409);db.prepare("UPDATE orders SET status='accepted' WHERE id=?").run(a.id);
  assert.equal((await checkout({...env,STRIPE_SECRET_KEY:''},a)).status,503);assert.equal((await call({...env,STRIPE_SECRET_KEY:''},'/health')).body.payments,false);db.close();
 });
 test('prices and currency are server-controlled and repeated checkout reuses one Stripe session',async()=>{
@@ -180,4 +180,25 @@ test('a stale migration cannot rotate or unlock a newer lease, or mutate a paid 
   env.STRIPE_HTTP=async()=>{count++;if(changed==='lease')db.prepare('UPDATE order_payments SET lock_until=? WHERE order_id=?').run(future,a.id);else db.prepare("UPDATE order_payments SET state='paid',paid_at='fixture-paid' WHERE order_id=?").run(a.id);return Response.json({error:discontinued},{status:400});};
   assert.equal((await checkout(env,a)).status,409);assert.equal(count,1);const saved=db.prepare('SELECT * FROM order_payments').get();assert.equal(saved.generation,row.generation);assert.equal(saved.request_params,row.request_params);if(changed==='lease')assert.equal(saved.lock_until,future);else assert.equal(saved.state,'paid');db.close();
  }
+});
+
+test('fixed packages checkout directly before acceptance, keep fulfillment separate and reuse a pending session',async()=>{
+ const {db,env,sessions,calls}=setup();
+ for(const [i,packageId] of ['audit','keywords','onpage','bundle'].entries()){
+  const a=await create(env,'direct'+i+'@example.test',{packageId},false);
+  const before=await call(env,'/account-api/orders/'+a.id,'GET',null,a.cookie);
+  assert.equal(before.body.order.checkoutEligible,true);
+  assert.equal((await checkout(env,a)).status,200);assert.equal((await checkout(env,a)).status,200);
+  assert.equal(db.prepare('SELECT status FROM orders WHERE id=?').get(a.id).status,'requested');
+  assert.equal((await call(env,'/admin/orders/'+a.id,'PATCH',{status:'requested',report:'',note:'Your paid package will be reviewed; work has not started.'},null,true)).status,200);
+ }
+ assert.equal(sessions.size,4);assert.equal(calls.length,4);db.close();
+});
+test('direct paid projects allow owner updates without cancelling payment, but cannot be declined before refund',async()=>{
+ const {db,env,sessions}=setup(),a=await create(env,'direct-paid@example.test',{},false);
+ await checkout(env,a);const s=[...sessions.values()][0];paid(s);
+ assert.equal((await call(env,'/account-api/orders/'+a.id+'/payment-status','POST',{},a.cookie)).status,200);
+ assert.equal((await call(env,'/admin/orders/'+a.id,'PATCH',{status:'requested',report:'',note:'Reviewing your submitted brief.'},null,true)).status,200);
+ assert.equal((await call(env,'/admin/orders/'+a.id,'PATCH',{status:'declined',report:'',note:'Cannot fulfill.'},null,true)).status,409);
+ assert.equal(db.prepare('SELECT state FROM order_payments WHERE order_id=?').get(a.id).state,'paid');db.close();
 });

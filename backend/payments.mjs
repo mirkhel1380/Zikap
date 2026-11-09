@@ -67,9 +67,10 @@ async function rowFor(env,id){return env.DB.prepare('SELECT * FROM order_payment
 function parameters(order,generation,origin){
  const p=new URLSearchParams({mode:'payment',client_reference_id:order.id,success_url:origin+'/account/?payment=return&order='+order.id+'#projects',cancel_url:origin+'/account/?payment=cancel&order='+order.id+'#projects','metadata[orderId]':order.id,'metadata[generation]':generation,'payment_intent_data[metadata][orderId]':order.id,'line_items[0][quantity]':'1','line_items[0][price_data][currency]':'usd','line_items[0][price_data][unit_amount]':String(order.price_usd*100),'line_items[0][price_data][product_data][name]':'Zikap / '+(order.package_title||titles[order.package_id]),'adaptive_pricing[enabled]':'false'});return p.toString();
 }
+export const checkoutAllowed=order=>Object.hasOwn(prices,order.package_id)&&['requested','accepted'].includes(order.status);
 export async function checkout(env,order,origin,ApiError){
  if(!await paymentsReady(env))throw new ApiError('Online payment is not configured yet. No payment was collected.',503);
- if(order.status!=='accepted')throw new ApiError('Payment opens after Zikap accepts your project and confirms the scope and timing.',409);
+ if(!checkoutAllowed(order))throw new ApiError('Checkout is available for an open fixed-package project. Review its latest status before paying.',409);
  const original=await orderSnapshot(env,order);
  let savedPrice=null;try{savedPrice=await env.DB.prepare('SELECT price_usd FROM order_package_snapshots WHERE order_id=?').bind(order.id).first();}catch{}
  if(!Object.hasOwn(prices,order.package_id)||!Number.isInteger(order.price_usd)||order.price_usd<1||order.price_usd>9999||order.price_usd!==(savedPrice?.price_usd??prices[order.package_id]))throw new ApiError('The package price needs owner review before payment.',409);
@@ -128,6 +129,8 @@ export async function protectOwnerChange(env,id,next,ApiError){
  if(next==='delete')throw new ApiError('Payment-linked projects cannot be deleted here. Keep the project record and manage the payment in Stripe.',409);
  if(['creating','pending'].includes(row.state)&&['in_progress','delivered'].includes(next))throw new ApiError('Confirm the Stripe payment before starting or delivering this project.',409);
  if(!['declined','requested'].includes(next))return;
+ // Saving an update to a directly purchased project must not cancel its checkout.
+ if(next==='requested'){const order=await env.DB.prepare('SELECT status FROM orders WHERE id=?').bind(id).first();if(order?.status==='requested')return;}
  if(row.state==='paid'&&row.refunded_cents<row.amount_cents)throw new ApiError('This project has a payment. Handle any refund in Stripe before declining it.',409);
  if(row.state==='creating')throw new ApiError('A checkout is being prepared. Wait for it to finish before changing acceptance.',409);
  if(row.state==='pending'){

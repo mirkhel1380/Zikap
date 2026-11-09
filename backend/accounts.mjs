@@ -5,7 +5,7 @@ import {customerExport} from './customer-export.mjs';
 import {quoteOrder,snapshotStatement,orderSnapshot,orderSnapshots} from './catalog.mjs';
 import {aiReviewRoute} from './ai-reviews.mjs';
 // First-party customer sessions. No email delivery or password-reset email service.
-import {paymentsReady,stripeConfigured,paymentSummaries,checkout,reconcilePayment} from './payments.mjs';
+import {paymentsReady,stripeConfigured,paymentSummaries,checkoutAllowed,checkout,reconcilePayment} from './payments.mjs';
 import {actionsReady,projectActions} from './actions.mjs';
 import {messagesReady,projectMessages,messageReadsReady,unreadCounts} from './messages.mjs';
 const COOKIE='__Host-zikap_session',LIFETIME=7*24*60*60;
@@ -53,7 +53,7 @@ export async function accountRoute(req,env,h){
   return {'Set-Cookie':cookie(token)};
  }
  const publicUser=u=>({name:u.name,email:u.email,emailVerified:false});
- const accountOrder=async(row,knownPayment,knownUnread)=>{let pages=[];try{pages=JSON.parse(row.pages);}catch{}const payment=knownPayment||(await paymentSummaries(env,[row.id])).get(row.id);const unread=knownUnread!==undefined?knownUnread:(await unreadCounts(env,[row.id],'customer')).get(row.id);return {...receipt(await orderSnapshot(env,row)),unreadMessages:unread,pages,topic:row.topic,language:row.language,market:row.market,goals:row.goals,payment,paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')};};
+ const accountOrder=async(row,knownPayment,knownUnread)=>{let pages=[];try{pages=JSON.parse(row.pages);}catch{}const payment=knownPayment||(await paymentSummaries(env,[row.id])).get(row.id);const unread=knownUnread!==undefined?knownUnread:(await unreadCounts(env,[row.id],'customer')).get(row.id);return {...receipt(await orderSnapshot(env,row)),unreadMessages:unread,pages,topic:row.topic,language:row.language,market:row.market,goals:row.goals,payment,checkoutEligible:checkoutAllowed(row),paymentCollected:!payment?.testMode&&(payment?.status==='paid'||payment?.status==='partially_refunded')};};
  if(path==='/account-api/register'&&req.method==='POST'){
   await rate(req,env,'account-register',5);const data=await jsonBody(req,5000),email=emailOf(data.email),password=passwordOf(data.password),name=text(data.name,100);
   if(data.consent!==true)throw new ApiError('Please agree to store the details needed for your account and projects.');
