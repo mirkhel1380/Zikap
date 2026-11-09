@@ -1,8 +1,8 @@
-# Operating the proposed Zikap policies
+# Operating the Zikap policies
 
-Content version 2026-11-08. Operator: Highlink LLC, Texas, United States.
+Version 2026-11-09. Operator: Highlink LLC, Texas, United States.
 
-This is a non-effective review set. An effective date, final adoption and publication remain separate steps. The draft branch and pull request do not move main, merge changes or adopt customer policies. Prepared pages are terms.html, privacy.html, refunds.html and policies.html. Existing customer agreements remain unchanged. Domain/mailbox setup and delivery verification remain deferred.
+The owner approved official publication in the latest reply (“سیس خی پیش ببر”) after the explicit request to authorize publishing the prepared policies on the main site. This supersedes the policy-publication deferral for the reviewed set. Effective date: November 9, 2026 (Asia/Kabul). Existing customer agreements remain unchanged. Domain/mailbox setup and delivery verification remain deferred; publication does not certify those operations.
 
 ## Project and refund handling
 
@@ -22,7 +22,7 @@ This is a non-effective review set. An effective date, final adoption and public
 
 ## Contact and provider facts
 
-The proposed contact strings remain support@zikap.site and privacy@zikap.site, as instructed. Domain/mailbox setup and delivery verification were deferred and are not performed by this release. Signed-in project/support routes are implemented. Do not claim mailbox reachability or universal legal compliance based on publication. Someone unable to sign in needs a genuinely monitored external contact route; verify the chosen mailboxes as part of the deferred email setup.
+The chosen contact strings remain support@zikap.site and privacy@zikap.site, as instructed. Domain/mailbox setup and delivery verification were deferred and are not performed by this release. Signed-in project/support routes are implemented. Do not claim mailbox reachability or universal legal compliance based on publication. Someone unable to sign in needs a genuinely monitored external contact route; verify the chosen mailboxes as part of the deferred email setup.
 
 GitHub Pages, Cloudflare/D1, Stripe and optional Cloudflare Workers AI reflect the current source. Resend is described conditionally. No provider account settings, email activation, Stripe-hosted policy settings, customer contracts, consent receipts, database schema or financial operation were changed. Existing storage-consent checkboxes were not relabeled as proof of acceptance of a particular policy version. If explicit versioned acceptance is later required, implement and record it separately before claiming it exists.
 

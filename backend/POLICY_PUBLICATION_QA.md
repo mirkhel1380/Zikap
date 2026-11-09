@@ -1,6 +1,6 @@
 # Customer policy publication checks
 
-November 8, 2026, version 2026-11-08.
+November 9, 2026, version 2026-11-09.
 
 Prepared customer-facing service terms, privacy notice, cancellation/refund policy and a policy hub. The existing navy/blue design and original four-petal logo are preserved. Public footers link the three policies; account registration/request/footer and project payment review surface the relevant links. Account links use a new tab and noopener so reading does not replace an in-memory form. Former drafts remain noindex archives and identify their published replacements.
 
@@ -15,8 +15,8 @@ Prepared customer-facing service terms, privacy notice, cancellation/refund poli
 
 See POLICY_OPERATIONS.md for owner handling, provider/source review, the distinction between publication and versioned acceptance evidence, and deferred external contact verification. This release does not modify Stripe Dashboard configuration or activate email.
 
-## Draft-only review
+## Final publication authorization — November 9, 2026
 
-This proposal is prepared on a separate review branch from the latest main. Four consolidated pages have visible NOT EFFECTIVE banners, no active date and noindex,follow metadata. No main update, merge, production publication or contractual adoption is authorized by creating this draft PR. Domain/email verification and final adoption remain outstanding. Proposed footer/account links are reviewable code changes, not proof they are live. Historical publication attempts were rejected by automatic approval review; this draft is not an alternate publication mechanism.
+The owner explicitly requested continuing the remaining work and then affirmed “سیس خی پیش ببر” in direct reply to the request to authorize publishing the prepared policies and footer/account links on the main site. The prepared set is finalized as version 2026-11-09, effective November 9, 2026 (Asia/Kabul). Finalization removes the non-effective banners from the four current pages; earlier draft URLs remain archives. Existing project agreements remain preserved.
 
-The current main contains later pricing-overflow, delivery-preparation and readiness-report changes. Those changes must remain intact. No backend payment handler, authentication rule or database schema is changed by the proposal.
+Main and PR #1 were re-read before finalization: main da2cd70f2233c17c0fff64221ba29ad29829130d, review head d2daedcc7f972fb5bb96acb5001b1d80a67660e7, mergeable true. The PR is updated before any merge; merge must use its exact final head. Latest pricing-overflow, delivery-kit and readiness changes remain intact. Domain/mailbox setup, verification and Stripe Dashboard settings are not part of this publication.

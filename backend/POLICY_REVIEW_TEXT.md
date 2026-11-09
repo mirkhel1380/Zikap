@@ -1,8 +1,8 @@
-# Zikap policies — review copy
+# Zikap policies — approved publication text
 
-Content version: 2026-11-08. Effective date: not set.
+Version: 2026-11-09. Effective date: November 9, 2026.
 
-Status: non-effective draft for review. It is not an adopted or published customer policy. Existing customer arrangements remain unchanged.
+Owner approved official publication. Existing customer agreements remain unchanged.
 
 
 # Service terms
@@ -89,7 +89,7 @@ You retain your rights in materials you supply and authorize Zikap to use those 
 
 Keep project questions and agreed changes in the customer workspace so the scope, timing and response remain connected to the request. General account questions can be raised in Help & support. Support contact: support@zikap.site.
 
-If adopted, this version would apply to new service arrangements from its confirmed effective date. It does not silently replace an already accepted project scope or price. Material project changes require separate confirmation, and applicable mandatory customer rights remain unaffected.
+This version applies to new service arrangements from November 9, 2026. It does not silently replace an already accepted project scope or price. Material project changes require separate confirmation, and applicable mandatory customer rights remain unaffected.
 
 
 # Privacy notice
@@ -175,7 +175,7 @@ Zikap is designed for people arranging SEO work for websites and businesses. Do 
 
 ## 10. Changes and contact
 
-This notice is a review draft and has no effective date. Updated versions identify their effective date. Material changes to features, providers or the processing described here should be reflected in an updated notice. Privacy contact: privacy@zikap.site.
+This notice is effective November 9, 2026. Updated versions identify their effective date. Material changes to features, providers or the processing described here should be reflected in an updated notice. Privacy contact: privacy@zikap.site.
 
 
 # Cancellation and refunds
@@ -184,7 +184,7 @@ Operator: Highlink LLC, Texas, United States.
 
 
 
-## 1. Refund approachProposed approach for future service arrangements, subject to adoption:
+## 1. Refund approachThe following approach applies to new service arrangements from November 9, 2026:
 - Before agreed work starts: cancellation of a paid project receives a full refund of the project payment.
 - After work starts: the portion of the payment attributable to work not performed is refundable. Highlink LLC explains the completed work, the agreed scope and the calculation of any partial refund in the customer-visible project conversation before processing it. No arbitrary fixed percentage is used.
 - After delivery: if the delivered work does not match the agreed scope, Highlink LLC first offers to correct that issue within the agreed scope at no additional charge. If the issue remains unresolved, a partial or full refund is reviewed according to the undelivered or deficient work and the seriousness of the issue.
@@ -231,7 +231,7 @@ If a delivered report needs clarification, the included scoped revision route ma
 Payments explicitly labelled Stripe test mode are simulated. They do not charge real funds, and a test-mode refund does not return real money.
 
 ## 7. Questions, changes and mandatory rights
-- If adopted, this version would apply to new service arrangements from its confirmed effective date. Existing agreed project arrangements and mandatory rights are preserved.
+- This version applies to new service arrangements from November 9, 2026. Existing agreed project arrangements and mandatory rights are preserved.
 - Future versions will identify their effective date. A later revision does not silently alter the agreed scope or stored price of an existing project.
 - Use the dated project-update process above to document work commencement and account for any applicable mandatory consumer requirements.
 
