@@ -1,0 +1,60 @@
+/* Public-site text colors are paired with their actual light or navy surfaces. */
+:root{--muted:#52657e}
+body .crumbs,body .crumbs a,
+body .page-hero>p,body .pricing-hero>p,
+body .tagline span,body .pricing-trust span,body .planner-badges span,
+body .about-brand-panel>span,body .about-intro-copy>p,
+body .about-explore-links span,body .about-explore-links small,
+body .scope-principles>div>span,body .scope-principles p,
+body .finder-intro>p,body .finder-kicker,body .finder-output>span,
+body .service-resource,body .service-resource>span,
+body .sample-disclosure>p,body .report-card-copy>span,
+body .sample-section-heading>span,body .sample-section-heading>p,
+body .sample-report-header>span,body .sample-id,
+body .sample-finding p,body .sample-finding dd,
+body .sample-report-footer>p,body .sample-note p,
+body .sample-outline li,body .edit-fields span,body .edit-fields p,
+body .sample-library-callout p,
+body .bundle-panel p,body .bundle-price small,body .pricing-notes p,
+body .comparison-scroll caption,
+body .free-tools-cards a>span,
+body .policy-version,body .policy-section p,body .policy-section li,
+body .policy-review-grid p,
+body .doc-top>span:last-child,body .doc-step>b,body .doc-step p,
+body .doc-chip,body .doc-bottom,
+body .home-price-bundle>p,body .brief p,
+body .workspace-aside .tiny,body .snippet-output .tiny{color:#52657e}
+
+/* The first report cover uses the same light surface as the other samples. */
+body .report-paper,body .report-paper h2,body .report-paper>span{color:#0f172a}
+body .report-paper small{color:#52657e;font-size:11px}
+body .report-paper>span{font-size:10px}
+
+body .price-card:not(.technical) .price-card-label,
+body .price-card:not(.technical) .price-unit,
+body .price-card:not(.technical) .price-amount>span,
+body .service-summary:not(.technical) .summary-eyebrow,
+body .service-summary:not(.technical) .summary-label,
+body .service-summary:not(.technical) li,
+body .service-summary:not(.technical) .service-start-price>span,
+body .service-summary:not(.technical) .service-start-price small,
+body .service-summary:not(.technical) .service-start-price>p,
+body .service-summary:not(.technical) .service-start-price .price-details,
+body .studio-card:not(.technical) .service-card-price span,
+body .studio-card:not(.technical) .studio-output small{color:#52657e}
+body .price-card.technical .tiny{color:#cbd5e1}
+body .spotlight-calendar .calendar-top>span,
+body .project-preview-copy .preview-caption{color:#cbd5e1}
+body .sample-library-callout .eyebrow,body .free-paid-note .eyebrow,
+body .bundle-panel .eyebrow,body .workspace-aside .eyebrow,
+body .snippet-output .eyebrow,body .ai-review-card .eyebrow{color:#1e40af}
+body .website-check-form .website-check-consent{color:#52657e}
+body .website-check-form .website-check-hint{color:#52657e!important}
+/* Match the interior theme's specificity for its inherited helper text. */
+.inner-page .crumbs,.inner-page .crumbs a,
+.inner-page .page-hero>p,.inner-page .pricing-hero>p,
+.inner-page .tagline span,.inner-page .pricing-trust span,
+.inner-page .planner-badges span,.inner-page .comparison-scroll caption,
+.inner-page .free-tools-cards a>span,
+.inner-page .sample-report-header>span:last-child{color:#52657e}
+body .doc-chip{color:#475569}
