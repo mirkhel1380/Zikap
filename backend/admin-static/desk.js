@@ -1,7 +1,7 @@
 'use strict';
 (()=>{
  const $=id=>document.getElementById(id),base=location.origin;
- let cursor=null,session=0,selected=null,detailVersion=0;const dirty=new Set();
+ let cursor=null,session=0,selected=null,detailVersion=0,recordsState='loading';const dirty=new Set();
  const loaded=new Map();
  const states={requested:'Request received',accepted:'Accepted',in_progress:'In progress',delivered:'Report delivered',revision_requested:'Revision requested',declined:'Declined'};
  const packages={
@@ -30,6 +30,7 @@
   const unreadNotice=node('p',order.unreadMessages>0?order.unreadMessages+' unread customer message'+(order.unreadMessages===1?'':'s'):'','owner-unread-notice');unreadNotice.hidden=!(order.unreadMessages>0);box.append(unreadNotice);
   const payment=order.payment;
   if(payment){const labels={unpaid:'No Stripe payment recorded',pending:'Stripe checkout pending',paid:'Stripe payment confirmed',partially_refunded:'Partially refunded in Stripe',refunded:'Refunded in Stripe'};box.append(node('p',(labels[payment.status]||payment.status)+(payment.testMode?' / TEST MODE — no real charge':'')+(payment.amountCents?' · $'+(payment.amountCents/100).toFixed(2)+' USD':''),'availability'));}
+  const fulfillmentHost=node('section','');box.append(fulfillmentHost);window.ZikapFulfillment.mount(fulfillmentHost,order,{owner:true});
   const brief=node('details','','owner-brief');brief.open=true;brief.append(node('summary','Customer brief'),node('pre','Page URLs: '+order.pages+'\nTopic: '+order.topic+'\nLanguage: '+order.language+'\nMarket: '+order.market+'\nGoals: '+order.goals));
   if(order.revision_note)brief.append(node('p','Customer revision request: '+order.revision_note,'owner-revision'));box.append(brief);
   const preparation=window.ZikapDeliveryKit.guide(order);if(preparation.length){const guide=node('details','','owner-brief'),list=node('ol',''),downloadGuide=button('Download delivery checklist');guide.append(node('summary','Delivery preparation guide'),node('p','Use this guide to prepare the actual work. It does not mark a review complete, save a customer update or set a delivery date.','tiny'));for(const step of preparation)list.append(node('li',step));downloadGuide.addEventListener('click',()=>saveFile('zikap-delivery-checklist-'+order.id+'.txt',['Zikap / OWNER DELIVERY PREPARATION','Not completed findings or a customer report','Package: '+(order.package_title||p?.title||order.package_id),'Website: '+order.website,'Language: '+order.language+' / Market: '+order.market,'',...preparation.map((step,i)=>(i+1)+'. [ ] '+step)].join('\n')));guide.append(list,downloadGuide);box.append(guide);}
@@ -68,7 +69,7 @@
    if(state.value==='in_progress'&&(!note.value.trim()||(order.status!=='in_progress'&&note.value.trim()===(order.owner_note||'').trim()))){status.textContent='Add a new customer-visible update confirming the agreed scope and that work is beginning before marking In progress.';note.focus();return;}
    if(state.value==='delivered'&&(!report.value.trim()||/\[ADD\b/i.test(report.value))){status.textContent='Delivery needs a completed report. Replace every [ADD ...] placeholder and include the actual findings before saving as delivered.';report.focus();return;}
    const snapshot={status:state.value,note:note.value,report:report.value,...(Number.isInteger(order.editVersion)?{expectedVersion:order.editVersion}:{})},saveSession=session;for(const control of form.querySelectorAll('button,input,textarea,select'))control.disabled=true;
-   try{const result=await api('/admin/orders/'+order.id,'PATCH',snapshot);if(saveSession!==session||!box.isConnected)return;const saved=result.orderUpdate;if(!saved)throw new Error('The save response could not confirm the editing version. Download this draft, then reopen the saved order.');Object.assign(order,{status:saved.status,report:saved.report,owner_note:saved.note,updated_at:saved.updatedAt,editVersion:saved.editVersion});state.value=saved.status;note.value=saved.note;report.value=saved.report;count.textContent=report.value.length.toLocaleString()+' / 90,000 characters';dirty.delete(order.id);badge.textContent=states[order.status];preview.hidden=true;draftNote.textContent='Saved to the server. The customer can see this update in their project.';status.textContent='Customer update saved.';reopen.hidden=true;if(historyDetails.open)loadHistory();filterOrders();window.ZikapAdminWorkspace.refreshSummary();}
+   try{const result=await api('/admin/orders/'+order.id,'PATCH',snapshot);if(saveSession!==session||!box.isConnected)return;const saved=result.orderUpdate;if(!saved)throw new Error('The save response could not confirm the editing version. Download this draft, then reopen the saved order.');Object.assign(order,{status:saved.status,report:saved.report,owner_note:saved.note,updated_at:saved.updatedAt,editVersion:saved.editVersion});window.ZikapFulfillment.mount(fulfillmentHost,order,{owner:true});state.value=saved.status;note.value=saved.note;report.value=saved.report;count.textContent=report.value.length.toLocaleString()+' / 90,000 characters';dirty.delete(order.id);badge.textContent=states[order.status];preview.hidden=true;draftNote.textContent='Saved to the server. The customer can see this update in their project.';status.textContent='Customer update saved.';reopen.hidden=true;if(historyDetails.open)loadHistory();filterOrders();window.ZikapAdminWorkspace.refreshSummary();}
    catch(err){if(saveSession===session){status.textContent=err.message;if(err.status===409)reopen.hidden=false;}}finally{if(box.isConnected){for(const control of form.querySelectorAll('button,input,textarea,select'))control.disabled=false;insert.disabled=!!report.value.trim()||!p;download.disabled=!report.value.trim();}}
 
   });
@@ -93,7 +94,7 @@
   window.ZikapPrivateWork.mount(privateHost,{api,order,checks:p?.checks||[],alive:()=>privateSession===session&&box.isConnected,onDirty:value=>{if(privateSession!==session||!box.isConnected)return;value?dirty.add(order.id+':private'):dirty.delete(order.id+':private');}});
  }
  async function load(more=false){
-  const requestSession=session;
+  const requestSession=session;recordsState='loading';window.ZikapAdminWorkspace?.render();
   if(!base){$('owner-status').textContent='The order server has not been connected yet.';return;}
   $('owner-refresh').disabled=true;$('owner-more').disabled=true;
   $('owner-refresh').disabled=true;
@@ -101,13 +102,13 @@
    if(!more){dirty.clear();selected=null;detailVersion++;$('order-editor').hidden=true;$('owner-orders').replaceChildren();loaded.clear();cursor=null;$('owner-desk').hidden=true;$('owner-more').hidden=true;}
    $('owner-status').textContent='Loading…';const data=await api('/admin/orders'+(cursor?'?before='+encodeURIComponent(cursor):''));
    if(requestSession!==session)return;
-   data.orders.forEach(order=>{if(!loaded.has(order.id))loaded.set(order.id,{order,box:null});});cursor=data.next;$('owner-more').hidden=!cursor;$('owner-desk').hidden=false;
+   data.orders.forEach(order=>{if(!loaded.has(order.id))loaded.set(order.id,{order,box:null});});cursor=data.next;recordsState='ready';$('owner-more').hidden=!cursor;$('owner-desk').hidden=false;
    filterOrders();$('owner-status').textContent=loaded.size+' request(s) loaded. Totals cover loaded requests only.';
-  }catch(e){if(requestSession===session)$('owner-status').textContent=e.message;}finally{if(requestSession===session){$('owner-refresh').disabled=false;$('owner-more').disabled=false;$('owner-refresh').disabled=false;}}
+  }catch(e){if(requestSession===session){recordsState='error';$('owner-status').textContent=e.message;window.ZikapAdminWorkspace?.render();}}finally{if(requestSession===session){$('owner-refresh').disabled=false;$('owner-more').disabled=false;$('owner-refresh').disabled=false;}}
  }
  $('owner-more').addEventListener('click',()=>load(true));$('owner-search').addEventListener('input',filterOrders);$('owner-filter').addEventListener('change',filterOrders);
  $('owner-refresh').addEventListener('click',()=>window.ZikapAdminWorkspace.refresh());
- function clear(){session++;detailVersion++;selected=null;dirty.clear();$('order-editor').hidden=true;cursor=null;loaded.clear();$('owner-orders').replaceChildren();$('owner-more').hidden=true;$('owner-more').disabled=false;$('owner-refresh').disabled=false;$('owner-desk').hidden=true;$('owner-search').value='';$('owner-filter').value='';$('owner-status').textContent='Signed out. Unsaved drafts have been cleared.';}
+ function clear(){recordsState='loading';session++;detailVersion++;selected=null;dirty.clear();$('order-editor').hidden=true;cursor=null;loaded.clear();$('owner-orders').replaceChildren();$('owner-more').hidden=true;$('owner-more').disabled=false;$('owner-refresh').disabled=false;$('owner-desk').hidden=true;$('owner-search').value='';$('owner-filter').value='';$('owner-status').textContent='Signed out. Unsaved drafts have been cleared.';}
  async function open(id,messages=false){
   if(selected&&(dirty.has(selected)||dirty.has(selected+':private'))&&!confirm('Discard unsaved edits before opening another order?'))return;
   const version=++detailVersion,requestSession=session;$('owner-status').textContent='Opening order…';
@@ -115,5 +116,5 @@
  }
  $('close-order').addEventListener('click',()=>{if(selected&&(dirty.has(selected)||dirty.has(selected+':private'))&&!confirm('Discard unsaved edits and close this order?'))return;if(selected){dirty.delete(selected);dirty.delete(selected+':private');const record=loaded.get(selected);if(record)record.box=null;}detailVersion++;selected=null;$('owner-orders').replaceChildren();$('order-editor').hidden=true;$('requests-view').focus();});
  addEventListener('beforeunload',event=>{if(dirty.size||window.ZikapCatalogEditor?.hasDraft()){event.preventDefault();event.returnValue='';}});
- window.ZikapAdminDesk={load:()=>{session++;return load();},more:()=>load(true),clear,open,api,records:()=>[...loaded.values()].map(v=>v.order),hasMore:()=>!!cursor,hasDraft:()=>dirty.size>0||window.ZikapCatalogEditor?.hasDraft(),packages,states};
+ window.ZikapAdminDesk={load:()=>{session++;return load();},more:()=>load(true),clear,open,api,readState:()=>recordsState,records:()=>[...loaded.values()].map(v=>v.order),hasMore:()=>!!cursor,hasDraft:()=>dirty.size>0||window.ZikapCatalogEditor?.hasDraft(),packages,states};
 })();

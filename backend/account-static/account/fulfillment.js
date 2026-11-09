@@ -1,0 +1,36 @@
+'use strict';
+(()=>{
+ function describe(order){
+  const p=order.payment||{},status=order.status,report=typeof order.report==='string'&&!!order.report.trim(),knownMode=typeof p.testMode==='boolean',confirmed=p.status==='paid'&&knownMode&&Number.isSafeInteger(p.amountCents)&&p.amountCents>0&&p.currency==='usd'&&p.refundedCents===0,refunded=p.status==='refunded',partial=p.status==='partially_refunded',live=confirmed&&p.testMode===false;
+  let stage,title,description;
+  if(refunded){stage='refunded';title='Payment refunded';description='Review the latest project update before arranging any further work.';}
+  else if(partial){stage='refund_review';title='Partial refund recorded';description='Check the latest update for the remaining agreed scope and next arrangement.';}
+  else if(status==='declined'){stage='closed';title='Project closed';description='Read the latest update for the reason and any payment or refund arrangement.';}
+  else if(status==='revision_requested'){stage='revision';title='Clarification in review';description='Your clarification is with the specialist. The previous report remains available while you wait for an update.';}
+  else if(status==='delivered'&&report){stage='delivered';title='Your report is ready';description=order.revisionUsed||order.revision_used?'Read or download the latest report. Your included clarification has already been requested; check the latest update.':'Read or download the report below, then use the included clarification option if needed within the original scope.';}
+  else if(status==='delivered'){stage='delivery_review';title='Delivery needs an update';description='A delivered status is saved, but no report is available. Contact the project conversation for help.';}
+  else if(status==='in_progress'){stage='working';title='Specialist work in progress';description='Check the dated project update for the agreed scope, timing and any questions.';}
+  else if(['requested','accepted'].includes(status)&&confirmed){stage='paid_queue';title=p.testMode?'Test payment confirmed':'Payment confirmed · queued for work';description=p.testMode?'This is a simulated payment, with no real charge. Project actions remain separate from payment.':'Your brief is ready for specialist review. Timing and any scope questions will appear in project updates before work begins.';}
+  else if(['requested','accepted'].includes(status)&&p.status==='pending'){stage='payment_pending';title='Checkout awaiting confirmation';description='Use the Payment section to check or resume the saved checkout. Opening or returning from Stripe alone does not confirm a payment.';}
+  else{stage='payment_review';title='Review your saved project';description=p.available===false?'Online payment is unavailable for this project. Read the latest update or ask in the project conversation.':p.available&&p.status==='unpaid'?'Confirm the fixed-package scope and one-time price in the Payment section to continue directly to Stripe.':'The payment status needs verification. Check the latest update or ask in the project conversation before making another payment.';}
+  const scopeDone=['accepted','in_progress','delivered','revision_requested'].includes(status),reportDone=report&&['delivered','revision_requested'].includes(status),workDone=reportDone;
+  const stopped=['refunded','refund_review','closed','delivery_review'].includes(stage);
+  const steps=[
+   {label:refunded?'Payment refunded':partial?'Partial refund':confirmed?(p.testMode?'Test payment confirmed':'Payment confirmed'):p.status==='pending'?'Payment pending':p.available===false?'Payment status unavailable':'Payment not recorded',state:refunded||partial?'attention':confirmed?'done':stage==='payment_pending'||stage==='payment_review'?'current':'pending'},
+   {label:'Scope review',state:scopeDone?'done':stage==='paid_queue'?'current':'pending'},
+   {label:status==='revision_requested'?'Clarification review':'Specialist work',state:stopped&&['revision_requested','in_progress'].includes(status)?'attention':status==='revision_requested'||status==='in_progress'?'current':workDone?'done':'pending'},
+   {label:reportDone?'Report available':'Report delivery',state:reportDone?'done':'pending'}
+  ];
+  const ownerLabels={paid_queue:p.testMode?'Test payment · simulated':'Paid · awaiting work',working:'Work in progress',revision:'Clarification requested',delivered:'Report delivered',refunded:'Refunded',refund_review:'Partial refund · review',closed:'Closed',delivery_review:'Missing report · review',payment_pending:'Payment pending',payment_review:'Payment not confirmed'};
+  return{stage,title,description,steps,readyForWork:live&&['requested','accepted'].includes(status),testMode:p.testMode===true,ownerLabel:ownerLabels[stage]};
+ }
+ function mount(host,order,{owner=false}={}){
+  const data=describe(order),el=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text||'';if(cls)n.className=cls;return n;};
+  host.replaceChildren();host.classList.add('fulfillment-panel');host.setAttribute('aria-label',owner?'Fulfillment workflow':'Project delivery progress');
+  host.append(el('span',owner?'ORDER FULFILLMENT':'YOUR PROJECT JOURNEY','fulfillment-eyebrow'),el('h3',data.title),el('p',data.description));
+  const list=el('ol','','fulfillment-steps');for(const [i,step]of data.steps.entries()){const item=el('li','','fulfillment-step '+step.state);if(step.state==='current')item.setAttribute('aria-current','step');item.append(el('span',String(i+1),'fulfillment-number'),el('strong',step.label),el('small',({done:'Recorded',current:'Current step',pending:'Not recorded',attention:'Review update'})[step.state]));list.append(item);}host.append(list);
+  if(owner){const actions={paid_queue:'Review the brief and access limits, confirm scope and delivery timing with the customer, then add a fresh start update and save In progress. Use the preparation guide and private checklist below.',working:'Complete the scoped research and report. Preview the customer update, replace every [ADD ...] field, then save the finished report as Report delivered.',revision:'Read the customer clarification, update the existing report within scope, preview it and save the finished revision.',delivered:'The report is delivered. Keep project replies and the included clarification within the original agreed scope.',payment_pending:'Do not treat pending checkout as payment. The customer can check or resume it from their project.',refund_review:'Review the payment record and remaining scope before continuing work.',refunded:'Keep the refund record and review the customer arrangement before doing more work.',delivery_review:'Restore the actual completed report through the delivery editor; do not claim delivery from an empty report.',closed:'Keep the project and payment record. Review the latest arrangement before any new work.',payment_review:'No confirmed Stripe payment is recorded. Review the payment and the customer arrangement before starting paid work.'};host.append(el('p',actions[data.stage],'fulfillment-owner-action'));}
+  host.append(el('p','Confirmed timing is shown in project updates. Payment, work commencement and report delivery are separate recorded steps.','fulfillment-footnote'));return data;
+ }
+ window.ZikapFulfillment={describe,mount};
+})();
