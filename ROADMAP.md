@@ -174,3 +174,7 @@ Checkout preparation, payment-status checks, revisions and project reads now res
 ## Unsent clarification drafts — November 8, 2026
 
 Formal revision drafts now survive in-tab project refresh/close/reopen and workspace navigation, separately for each project. Successful matching submissions clear only the submitted draft; newer different notes remain explicitly unsent, even after the included revision is used. Explicit clearing, logout/unload warnings and account cleanup respect this memory-only lifecycle. Fifteen focused tests and isolated desktop/delayed-response/mobile checks passed without real revision/payment writes. See backend/REVISION_DRAFT_QA.md.
+
+## Consolidated policy drafts — November 9, 2026
+
+The proposed service terms, privacy notice, refunds page and hub are prepared as a separate draft-only review. They show NOT EFFECTIVE banners and no active date. Proposed site/footer/account links are code for review only. Publication attempts were blocked by automatic approval review; no main-ref update, merge or adoption is part of this draft. Existing customer agreements, pricing and later main-branch fixes must be preserved. Final adoption and domain/mailbox verification remain outstanding. See backend/POLICY_REVIEW_TEXT.md and backend/POLICY_PUBLICATION_QA.md.
