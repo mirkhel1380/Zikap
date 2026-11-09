@@ -17,19 +17,7 @@
   const r=await fetch(base+path,{method,credentials:'same-origin',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(20000)});
   const data=await r.json();if(r.status===401)document.dispatchEvent(new Event('zikap-admin-expired'));if(!r.ok){const error=new Error(data.error||'Service unavailable.');error.status=r.status;throw error;}return data;
  }
- function outline(order){
-  const p=packages[order.package_id];if(!p)return '';
-  const parts=['DRAFT REPORT — REPLACE EVERY [ADD ...] BEFORE DELIVERY','Zikap / '+(order.package_title||p.title),'Website: '+order.website,'Scope: '+p.scope,'Language: '+order.language+' / Market: '+order.market,'','REVIEW CONTEXT','Review date: [ADD date]','Reviewed pages / topic: [ADD exact scope]','Method and access limitations: [ADD what was checked and what was not]','','SUMMARY','[ADD the main observations and priorities supported by evidence]'];
-  if(['audit','bundle'].includes(order.package_id))parts.push('','TECHNICAL FINDINGS','Repeat this block for each real finding:','Affected URL: [ADD URL]','Observation and evidence: [ADD evidence]','Priority and reason: [ADD priority]','Recommended action: [ADD action]','Verification: [ADD how to verify]','Checks with no issue observed: [ADD checks]','Checks not performed: [ADD limitations]');
-  if(['keywords','bundle'].includes(order.package_id)){
-   parts.push('','KEYWORD IDEAS','Topic: '+order.topic,'For each idea, record phrase | intent | relevance | topic group. No live metrics are connected.');
-   for(let i=1;i<=25;i++)parts.push(String(i).padStart(2,'0')+'. [ADD phrase, intent, relevance and group]');
-   parts.push('','PAGE MAP (UP TO 5 PAGES)','[ADD target page, assigned group, existing/new decision and rationale]','Research method: [ADD sources, date and validation approach]');
-  }
-  if(['onpage','bundle'].includes(order.package_id))parts.push('','ON-PAGE EDIT BRIEFS (UP TO 3 EXISTING PAGES)','Repeat this block for each included page:','Page URL and purpose: [ADD URL and purpose]','Current observation: [ADD evidence]','Proposed title: [ADD title]','Proposed meta description: [ADD description]','Proposed heading/content edits: [ADD recommendations]','Internal links: [ADD source, target and reason]','Implementation status: [ADD what is proposed versus implemented]');
-  parts.push('','PRIORITIZED NEXT STEPS','[ADD action, responsible person and verification]','','LIMITATIONS AND HANDOFF','[ADD exclusions, open questions and next decision]','One clarification/revision within the agreed scope is included. Rankings, traffic and revenue are not guaranteed.');
-  return parts.join('\n');
- }
+ function outline(order){return window.ZikapDeliveryKit.outline(order,packages[order.package_id]);}
  function filterOrders(){
   let review=0,delivered=0,unread=0,known=true;for(const {order,box} of loaded.values()){if(['requested','revision_requested'].includes(order.status))review++;if(order.status==='delivered')delivered++;if(Number.isInteger(order.unreadMessages))unread+=order.unreadMessages;else known=false;if(box)box.hidden=selected!==order.id;}
   $('owner-total').textContent=String(loaded.size);$('owner-review').textContent=String(review);$('owner-delivered').textContent=String(delivered);$('owner-unread').textContent=known?String(unread):'—';
@@ -44,6 +32,7 @@
   if(payment){const labels={unpaid:'No Stripe payment recorded',pending:'Stripe checkout pending',paid:'Stripe payment confirmed',partially_refunded:'Partially refunded in Stripe',refunded:'Refunded in Stripe'};box.append(node('p',(labels[payment.status]||payment.status)+(payment.testMode?' / TEST MODE — no real charge':'')+(payment.amountCents?' · $'+(payment.amountCents/100).toFixed(2)+' USD':''),'availability'));}
   const brief=node('details','','owner-brief');brief.open=true;brief.append(node('summary','Customer brief'),node('pre','Page URLs: '+order.pages+'\nTopic: '+order.topic+'\nLanguage: '+order.language+'\nMarket: '+order.market+'\nGoals: '+order.goals));
   if(order.revision_note)brief.append(node('p','Customer revision request: '+order.revision_note,'owner-revision'));box.append(brief);
+  const preparation=window.ZikapDeliveryKit.guide(order);if(preparation.length){const guide=node('details','','owner-brief'),list=node('ol',''),downloadGuide=button('Download delivery checklist');guide.append(node('summary','Delivery preparation guide'),node('p','Use this guide to prepare the actual work. It does not mark a review complete, save a customer update or set a delivery date.','tiny'));for(const step of preparation)list.append(node('li',step));downloadGuide.addEventListener('click',()=>saveFile('zikap-delivery-checklist-'+order.id+'.txt',['Zikap / OWNER DELIVERY PREPARATION','Not completed findings or a customer report','Package: '+(order.package_title||p?.title||order.package_id),'Website: '+order.website,'Language: '+order.language+' / Market: '+order.market,'',...preparation.map((step,i)=>(i+1)+'. [ ] '+step)].join('\n')));guide.append(list,downloadGuide);box.append(guide);}
   const privateHost=node('section','','private-work-host'),privateSession=session;box.append(privateHost);
   const form=document.createElement('form');
   const label=(title,el,id)=>{const l=node('label',title);l.htmlFor=id;el.id=id;form.append(l,el);};
