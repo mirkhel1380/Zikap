@@ -51,11 +51,12 @@ async function admin(req,env){
 export default {async scheduled(controller,env,ctx){
   ctx.waitUntil(dispatchNotifications(env).catch(()=>{console.error('Notification queue processing failed.');}));
 },async fetch(req,env){
-  const origin=req.headers.get('origin'),allowed=env.ALLOWED_ORIGIN,requestOrigin=new URL(req.url).origin;
+  const origin=req.headers.get('origin'),requestOrigin=new URL(req.url).origin;
+  const allowedOrigin=origin!==null&&(origin===env.ALLOWED_ORIGIN||origin===env.CUSTOM_SITE_ORIGIN);
   const headers={'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','Vary':'Origin'};
-  if(origin===allowed){headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Methods']='GET,POST,PATCH,OPTIONS,DELETE';headers['Access-Control-Allow-Headers']='Content-Type,Authorization';}
+  if(allowedOrigin){headers['Access-Control-Allow-Origin']=origin;headers['Access-Control-Allow-Methods']='GET,POST,PATCH,OPTIONS,DELETE';headers['Access-Control-Allow-Headers']='Content-Type,Authorization';}
   const respond=(body,status=200,extra={})=>new Response(JSON.stringify(body),{status,headers:{...headers,...extra}});
-  if(origin&&origin!==allowed&&origin!==requestOrigin)return respond({error:'Origin not allowed.'},403);
+  if(origin&&!allowedOrigin&&origin!==requestOrigin)return respond({error:'Origin not allowed.'},403);
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
   try{
     const path=new URL(req.url).pathname;

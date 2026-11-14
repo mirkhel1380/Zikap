@@ -11,6 +11,7 @@
  },
  "vars": {
   "ALLOWED_ORIGIN": "https://mirkhel1380.github.io",
+  "CUSTOM_SITE_ORIGIN": "https://zikap.site",
   "SERVICE_CATALOG_REQUIRED": "true"
  },
  "d1_databases": [
