@@ -10,7 +10,8 @@
     "run_worker_first": true
   },
   "vars": {
-    "SERVICE_CATALOG_REQUIRED": "true"
+    "SERVICE_CATALOG_REQUIRED": "true",
+    "STRIPE_TEST_ONLY": "true"
   },
   "d1_databases": [
     {
