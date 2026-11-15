@@ -1,14 +1,17 @@
 // Stripe-hosted, one-time checkout with Dashboard-managed payment methods. No card details or keys go to the browser.
 import {prices,titles,orderSnapshot} from './catalog.mjs';
 const version='2026-10-28.endive';
-export const stripeConfigured=env=>typeof env.STRIPE_SECRET_KEY==='string'&&/^(sk|rk)_(test|live)_/.test(env.STRIPE_SECRET_KEY)&&typeof env.STRIPE_WEBHOOK_SECRET==='string'&&env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_');
-const testMode=env=>!env.STRIPE_SECRET_KEY?.includes('_live_');
+const stripeKeyMode=key=>typeof key==='string'?/^(?:sk|rk)_(test|live)_/.exec(key)?.[1]??null:null;
+const testMode=env=>stripeKeyMode(env.STRIPE_SECRET_KEY)==='test';
+export const stripeConfigured=env=>stripeKeyMode(env.STRIPE_SECRET_KEY)!==null
+ &&(env.STRIPE_TEST_ONLY!=='true'||testMode(env))
+ &&typeof env.STRIPE_WEBHOOK_SECRET==='string'&&env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_');
 const hex=bytes=>[...new Uint8Array(bytes)].map(v=>v.toString(16).padStart(2,'0')).join('');
 const equal=(a,b)=>{if(a.length!==b.length)return false;let n=0;for(let i=0;i<a.length;i++)n|=a.charCodeAt(i)^b.charCodeAt(i);return n===0;};
 // Non-sensitive readiness only: never expose key values, fragments, lengths or database errors.
 export async function paymentReadiness(env){
  const status=(value,pattern)=>typeof value!=='string'||value.length===0?'missing':pattern.test(value)?'configured':'invalid_format';
- const checks={secretKey:status(env.STRIPE_SECRET_KEY,/^(sk|rk)_(test|live)_/),webhookSecret:status(env.STRIPE_WEBHOOK_SECRET,/^whsec_/),databaseBinding:!!env.DB,paymentRecordsTable:null,webhookEventsTable:null};
+ const checks={mode:stripeKeyMode(env.STRIPE_SECRET_KEY),testOnly:env.STRIPE_TEST_ONLY==='true',secretKey:status(env.STRIPE_SECRET_KEY,/^(sk|rk)_(test|live)_/),webhookSecret:status(env.STRIPE_WEBHOOK_SECRET,/^whsec_/),databaseBinding:!!env.DB,paymentRecordsTable:null,webhookEventsTable:null};
  if(env.DB){
   try{await env.DB.prepare('SELECT order_id,session_id FROM order_payments LIMIT 1').first();checks.paymentRecordsTable=true;}catch{checks.paymentRecordsTable=false;}
   try{await env.DB.prepare('SELECT id FROM stripe_events LIMIT 1').first();checks.webhookEventsTable=true;}catch{checks.webhookEventsTable=false;}
