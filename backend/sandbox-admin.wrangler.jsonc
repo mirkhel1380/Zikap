@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "zikap-sandbox-admin",
+  "main": "admin-worker.mjs",
+  "compatibility_date": "2026-10-29",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./admin-static",
+    "binding": "ADMIN_ASSETS",
+    "run_worker_first": true
+  },
+  "services": [
+    {
+      "binding": "ZIKAP_API",
+      "service": "zikap-sandbox"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "zikap-sandbox-orders",
+      "database_id": "c5ab7f81-b850-45c3-82cc-bff2451ac5bc",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": {
+    "enabled": false
+  },
+  "vars": {
+    "SERVICE_CATALOG_REQUIRED": "true"
+  }
+}
