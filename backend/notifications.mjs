@@ -77,20 +77,25 @@ export async function dispatchNotifications(env,{now=Math.floor(Date.now()/1000)
     if(!persisted.meta.changes)continue;
    }catch {await finish('failed','INVALID_EVENT');continue;}
   }
+  let response;
   try{
    const transport=typeof env.EMAIL_HTTP==='function'?env.EMAIL_HTTP:fetch;
-   const response=await transport('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json','Idempotency-Key':'zikap-notification/'+row.id},body:payload,signal:AbortSignal.timeout(10000),redirect:'error'});
-   if(response.ok){
-    let data;try{data=await response.json();}catch{}
-    if(typeof data?.id==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(data.id))await finish('accepted','',data.id);
-    else await finish('pending','PROVIDER_RESPONSE');
-   }else {
-    // Provider bodies may contain addresses or secrets; never persist or return them.
-    await response.body?.cancel();
-    const retry=response.status===408||response.status===409||response.status===429||response.status>=500;
-    await finish(retry?'pending':'failed',response.status===401||response.status===403?'PROVIDER_CONFIGURATION':retry?'PROVIDER_RETRY':'PROVIDER_REJECTED');
-   }
-  }catch {await finish('pending','PROVIDER_UNAVAILABLE');}
+   response=await transport('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json','Idempotency-Key':'zikap-notification/'+row.id},body:payload,signal:AbortSignal.timeout(10000),redirect:'manual'});
+  }catch(error){
+   const code=error?.name==='TimeoutError'||error?.name==='AbortError'?'PROVIDER_TIMEOUT':error?.name==='TypeError'?'PROVIDER_NETWORK_ERROR':'PROVIDER_UNAVAILABLE';
+   await finish('pending',code);continue;
+  }
+  if(response.ok){
+   let data;try{data=await response.json();}catch{}
+   if(typeof data?.id==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(data.id))await finish('accepted','',data.id);
+   else await finish('pending','PROVIDER_RESPONSE');
+  }else {
+   // Provider bodies may contain addresses or secrets; never persist or return them.
+   try{await response.body?.cancel();}catch{}
+   if(response.status>=300&&response.status<400){await finish('pending','PROVIDER_REDIRECT');continue;}
+   const retry=response.status===408||response.status===409||response.status===429||response.status>=500;
+   await finish(retry?'pending':'failed',response.status===401||response.status===403?'PROVIDER_CONFIGURATION':retry?'PROVIDER_RETRY':'PROVIDER_REJECTED');
+  }
  }
  return {active:true,processed};
 }
