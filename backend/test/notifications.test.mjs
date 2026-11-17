@@ -68,7 +68,7 @@ test('provider acceptance is stored without claiming inbox delivery; concurrent 
  const f=setup();t.after(()=>f.db.close());f.order();
  await Promise.all([dispatchNotifications(f.env),dispatchNotifications(f.env)]);assert.equal(f.calls.length,1);
  const row=f.db.prepare('SELECT * FROM email_outbox').get();assert.equal(row.state,'accepted');assert.ok(row.provider_id);assert.ok(row.accepted_at);assert.equal(row.attempts,1);
- await dispatchNotifications(f.env);assert.equal(f.calls.length,1);assert.equal(f.calls[0].url,'https://api.resend.com/emails');assert.equal(f.calls[0].options.redirect,'error');
+ await dispatchNotifications(f.env);assert.equal(f.calls.length,1);assert.equal(f.calls[0].url,'https://api.resend.com/emails');assert.equal(f.calls[0].options.redirect,'manual');
 });
 test('lost responses retry the same immutable recipient, sender, body and idempotency key',async t=>{
  const f=setup();t.after(()=>f.db.close());const id=f.order(),start=now();
@@ -86,7 +86,7 @@ test('unknown outcomes stop before provider idempotency expiry, and stale sender
  const row=f.db.prepare('SELECT * FROM email_outbox WHERE order_id=?').get(second);assert.equal(row.state,'sending');assert.equal(row.lease_token,'replacement-lease');assert.equal(row.provider_id,'');
 });
 test('permanent rejection is held, retryable errors back off, and provider bodies never enter records',async t=>{
- for(const [status,state,code] of [[401,'failed','PROVIDER_CONFIGURATION'],[422,'failed','PROVIDER_REJECTED'],[429,'pending','PROVIDER_RETRY'],[503,'pending','PROVIDER_RETRY']]){
+ for(const [status,state,code] of [[302,'pending','PROVIDER_REDIRECT'],[401,'failed','PROVIDER_CONFIGURATION'],[422,'failed','PROVIDER_REJECTED'],[429,'pending','PROVIDER_RETRY'],[503,'pending','PROVIDER_RETRY']]){
   const f=setup();t.after(()=>f.db.close());f.order();f.env.EMAIL_HTTP=async()=>Response.json({message:'private-recipient-and-api-key'}, {status});await dispatchNotifications(f.env);const row=f.db.prepare('SELECT * FROM email_outbox').get();assert.equal(row.state,state);assert.equal(row.error_code,code);assert.doesNotMatch(JSON.stringify(row),/private-recipient-and-api-key/);
  }
 });
